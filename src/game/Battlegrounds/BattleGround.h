@@ -597,6 +597,11 @@ class BattleGround
         float m_TeamStartLocY[BG_TEAMS_COUNT];
         float m_TeamStartLocZ[BG_TEAMS_COUNT];
         float m_TeamStartLocO[BG_TEAMS_COUNT];
+
+#ifdef USE_ACHIEVEMENTS
+    public:
+        virtual bool AllNodesConrolledByTeam(TeamId teamId) const { return false; }
+#endif
 };
 
 // helper functions for world state list fill

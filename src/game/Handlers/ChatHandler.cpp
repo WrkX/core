@@ -691,6 +691,13 @@ void WorldSession::HandleEmoteOpcode(WorldPacket& recv_data)
     GetPlayer()->InterruptSpellsWithChannelFlags(AURA_INTERRUPT_ANIM_CANCELS);
     GetPlayer()->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_ANIM_CANCELS);
     GetPlayer()->HandleEmoteCommand(emote);
+
+#ifdef USE_ACHIEVEMENTS
+    // TODO(TsAah): check if we can handle emote achievements
+    // GetPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DO_EMOTE, text_emote, 0, unit);
+
+#endif
+
 }
 
 namespace MaNGOS

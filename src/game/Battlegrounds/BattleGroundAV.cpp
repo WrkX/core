@@ -326,6 +326,9 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
             UpdateScore(BG_TEAM_ALLIANCE, (-1) * BG_AV_RES_CAPTAIN);
             // spawn destroyed aura
             SpawnEvent(BG_AV_NodeEventCaptainDead_A, 0, true, true);
+            #ifdef USE_ACHIEVEMENTS
+            m_CaptainAlive[0] = false;
+            #endif
             break;
         case BG_AV_CAPTAIN_H:
             if (IsActiveEvent(BG_AV_NodeEventCaptainDead_H, 0))
@@ -335,6 +338,9 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
             UpdateScore(BG_TEAM_HORDE, (-1) * BG_AV_RES_CAPTAIN);
             // spawn destroyed aura
             SpawnEvent(BG_AV_NodeEventCaptainDead_H, 0, true, true);
+            #ifdef USE_ACHIEVEMENTS
+            m_CaptainAlive[1] = false;
+            #endif
             break;
         case BG_AV_COMMANDER_A_MORTIMER:
             RewardReputationToTeam(BG_AV_FACTION_H, m_RepCommander, HORDE);
@@ -1718,3 +1724,59 @@ SpellCastResult BattleGroundAV::CheckSpellCast(Player* caster, SpellEntry const*
     }
     return BattleGround::CheckSpellCast(caster, spell);
 }
+
+#ifdef USE_ACHIEVEMENTS
+
+bool BattleGroundAV::IsBothMinesControlledByTeam(TeamId teamId) const
+{
+    for (auto mine : m_Mine_Owner)
+        if (mine != teamId)
+            return false;
+
+    return true;
+}
+
+bool BattleGroundAV::IsAllTowersControlledAndCaptainAlive(TeamId teamId) const
+{
+    if (teamId == TEAM_ALLIANCE)
+    {
+        for (BG_AV_Nodes i = BG_AV_NODES_DUNBALDAR_SOUTH; i <= BG_AV_NODES_STONEHEART_BUNKER; ++i) // alliance towers controlled
+        {
+            if (m_Nodes[i].State == POINT_CONTROLLED)
+            {
+                if (m_Nodes[i].Owner != TEAM_ALLIANCE)
+                    return false;
+            }
+            else
+                return false;
+        }
+
+        for (BG_AV_Nodes i = BG_AV_NODES_ICEBLOOD_TOWER; i <= BG_AV_NODES_FROSTWOLF_WTOWER; ++i) // horde towers destroyed
+            if (m_Nodes[i].State != POINT_ASSAULTED)
+                return false;
+
+        return m_CaptainAlive[0];
+    }
+    else if (teamId == TEAM_HORDE)
+    {
+        for (BG_AV_Nodes i = BG_AV_NODES_ICEBLOOD_TOWER; i <= BG_AV_NODES_FROSTWOLF_WTOWER; ++i) // horde towers controlled
+        {
+            if (m_Nodes[i].State == POINT_CONTROLLED)
+            {
+                if (m_Nodes[i].Owner != TEAM_HORDE)
+                    return false;
+            }
+            else
+                return false;
+        }
+
+        for (BG_AV_Nodes i = BG_AV_NODES_DUNBALDAR_SOUTH; i <= BG_AV_NODES_STONEHEART_BUNKER; ++i) // alliance towers destroyed
+            if (m_Nodes[i].State != POINT_ASSAULTED)
+                return false;
+
+        return m_CaptainAlive[1];
+    }
+
+    return false;
+}
+#endif

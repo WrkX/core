@@ -82,6 +82,13 @@
 #include "GuardMgr.h"
 #include "TransportMgr.h"
 
+#if USE_ACHIEVEMENTS
+
+#include "Achievements/AchievementMgr.h"
+#include "Achievements/AchievementScriptMgr.h"
+
+#endif
+
 #include <chrono>
 
 INSTANTIATE_SINGLETON_1(World);
@@ -1534,6 +1541,27 @@ void World::SetInitialWorldSettings()
     sLog.outString(">>> Loot Tables loaded");
     sLog.outString();
 
+#ifdef USE_ACHIEVEMENTS
+
+    sAchievementStore.Load();
+    sAchievementCategoryStore.Load();
+    sAchievementCriteriaStore.Load();
+
+    sLog.outString("server.loading", "Loading Achievements...");
+    sAchievementMgr->LoadAchievementReferenceList();
+    sLog.outString("server.loading", "Loading Achievement Criteria Lists...");
+    sAchievementMgr->LoadAchievementCriteriaList();
+    sLog.outString("server.loading", "Loading Achievement Criteria Data...");
+    sAchievementMgr->LoadAchievementCriteriaData();
+    sLog.outString("server.loading", "Loading Achievement Rewards...");
+    sAchievementMgr->LoadRewards();
+    sLog.outString("server.loading", "Loading Achievement Reward Locales...");
+    sAchievementMgr->LoadRewardLocales();
+    sLog.outString("server.loading", "Loading Completed Achievements...");
+    sAchievementMgr->LoadCompletedAchievements();
+
+#endif
+
     sLog.outString("Loading Skill Fishing base level requirements...");
     sObjectMgr.LoadFishingBaseSkillLevel();
 
@@ -1630,6 +1658,13 @@ void World::SetInitialWorldSettings()
     sScriptMgr.LoadEventScripts();                          // must be after load Creature/Gameobject(Template/Data)
     sScriptMgr.LoadGenericScripts();
     sScriptMgr.LoadCreatureEventAIScripts();
+
+#ifdef USE_ACHIEVEMENTS
+
+    sAchievementScriptMgr->LoadDatabase();
+
+#endif
+
     sLog.outString(">>> Scripts loaded");
     sLog.outString();
 
@@ -1642,6 +1677,13 @@ void World::SetInitialWorldSettings()
 
     sLog.outString("Initializing Scripts...");
     sScriptMgr.Initialize();
+
+#ifdef USE_ACHIEVEMENTS
+
+    sAchievementScriptMgr->Initialize();
+
+#endif
+
     sLog.outString();
 
     sLog.outString("Loading aura removal on map change definitions");

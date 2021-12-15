@@ -345,6 +345,13 @@ void WorldSession::HandleQuestLogRemoveQuest(WorldPacket& recv_data)
     DEBUG_LOG("WORLD: Received CMSG_QUESTLOG_REMOVE_QUEST slot = %u", slot);
 
     _player->RemoveQuestAtSlot(slot);
+
+#ifdef USE_ACHIEVEMENTS
+
+    _player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_QUEST_ABANDONED, 1);
+
+#endif
+
 }
 
 void WorldSession::HandleQuestConfirmAccept(WorldPacket& recv_data)
