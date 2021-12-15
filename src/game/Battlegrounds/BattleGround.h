@@ -28,6 +28,12 @@
 #include "ByteBuffer.h"
 #include "ObjectGuid.h"
 
+#ifdef USE_ACHIEVEMENTS
+
+#include "SpellDefines.h"
+
+#endif
+
 // magic event-numbers
 #define BG_EVENT_NONE 255
 // those generic events should get a high event id

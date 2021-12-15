@@ -22,7 +22,7 @@ jobs:
     - name: install dependencies
       run: |
         sudo apt-get -qq install libmysql++-dev libace-dev libtbb-dev
-        sudo apt-get -qq install cmake ccache build-essential cppcheck git make wget libiberty-dev openssl libssl-dev libcurl4-openssl-dev
+        sudo apt-get -qq install cmake ccache build-essential git libiberty-dev openssl libssl-dev
 
     # - name: build ace library
     #   env:
@@ -61,9 +61,9 @@ jobs:
         BUILDER_DEBUG_SYMBOLS: 0
         BUILDER_USE_STD_MALLOC: 0
         BUILDER_USE_EXTRACTORS: 1
-        BUILDER_USE_ANTICHEAT: 1
+        BUILDER_USE_ANTICHEAT: 0
         BUILDER_USE_SCRIPTS: 1
-        BUILDER_USE_LIBCURL: 1
+        BUILDER_USE_LIBCURL: 0
         BUILDER_USE_ACHIEVEMENTS: 1
         BUILDER_SUPPORTED_CLIENT_BUILD: CLIENT_BUILD_1_12_1
       run: |
