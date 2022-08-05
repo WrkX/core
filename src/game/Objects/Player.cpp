@@ -553,7 +553,7 @@ void TradeData::SetAccepted(bool state, bool crosssend /*= false*/)
 //== Player ====================================================
 
 Player::Player(WorldSession* session) : Unit(),
-    m_mover(this), m_camera(this), m_reputationMgr(this),
+    m_mover(this), m_camera(this), m_reputationMgr(this), m_saveDisabled(false),
     m_enableInstanceSwitch(true), m_currentTicketCounter(0), m_castingSpell(0), m_repopAtGraveyardPending(false),
     m_honorMgr(this), m_bNextRelocationsIgnored(0), m_personalXpRate(-1.0f), m_isStandUpScheduled(false), m_foodEmoteTimer(0)
 {
@@ -702,7 +702,6 @@ Player::Player(WorldSession* session) : Unit(),
     worldMask = WORLD_DEFAULT_CHAR;
     i_AI = nullptr;
     m_cheatOptions = 0x0;
-    m_DbSaveDisabled = false;
 
     m_lastFromClientCastedSpellID = 0;
 
@@ -752,9 +751,6 @@ Player::~Player()
     CleanupChannels();
 
     delete PlayerTalkClass;
-
-    for (const auto& x : m_ItemSetEff)
-         delete x;
 
     // clean up player-instance binds, may unload some instance saves
     for (const auto& itr : m_boundInstances)
@@ -814,6 +810,7 @@ bool Player::ValidateAppearance(uint8 race, uint8 class_, uint8 gender, uint8 ha
 
 bool Player::Create(uint32 guidlow, std::string const& name, uint8 race, uint8 class_, uint8 gender, uint8 skin, uint8 face, uint8 hairStyle, uint8 hairColor, uint8 facialHair)
 {
+    m_saveDisabled = true; // only temporary bots are created this way
     Object::_Create(guidlow, 0, HIGHGUID_PLAYER);
 
     m_name = name;
@@ -1137,10 +1134,28 @@ uint32 Player::EnvironmentalDamage(EnvironmentalDamageType type, uint32 damage)
     uint32 absorb = 0;
     int32 resist = 0;
 
+    // if player is immune to the school, no packet should be sent
     if ((type == DAMAGE_LAVA) || (type == DAMAGE_FIRE))
+    {
+        if (IsImmuneToDamage(SPELL_SCHOOL_MASK_FIRE))
+            return 0;
+
         CalculateDamageAbsorbAndResist(this, SPELL_SCHOOL_MASK_FIRE, DIRECT_DAMAGE, damage, &absorb, &resist, nullptr);
+    }
     else if (type == DAMAGE_SLIME)
+    {
+        if (IsImmuneToDamage(SPELL_SCHOOL_MASK_NATURE))
+            return 0;
+
         CalculateDamageAbsorbAndResist(this, SPELL_SCHOOL_MASK_NATURE, DIRECT_DAMAGE, damage, &absorb, &resist, nullptr);
+    }
+    else if (type == DAMAGE_DROWNING)
+    {
+        if (IsImmuneToDamage(SPELL_SCHOOL_MASK_NORMAL))
+            return 0;
+
+        // drowning damage is not absorbable
+    }
 
     uint32 const bonus = (resist < 0 ? uint32(std::abs(resist)) : 0);
     damage += bonus;
@@ -1151,7 +1166,7 @@ uint32 Player::EnvironmentalDamage(EnvironmentalDamageType type, uint32 damage)
 
     SendEnvironmentalDamageLog(type, damage, absorb, resist);
 
-    uint32 final_damage = DealDamage(this, damage, nullptr, SELF_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+    damage = DealDamage(this, damage, nullptr, SELF_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 
     if (type == DAMAGE_FALL && !IsAlive())                  // DealDamage not apply item durability loss at self damage
     {
@@ -1169,7 +1184,7 @@ uint32 Player::EnvironmentalDamage(EnvironmentalDamageType type, uint32 damage)
 
     }
 
-    return final_damage;
+    return damage;
 }
 
 ///The player sobers by 256 every 10 seconds
@@ -1582,13 +1597,7 @@ void Player::Update(uint32 update_diff, uint32 p_time)
 #endif
 
     if (HasUnitState(UNIT_STAT_MELEE_ATTACKING))
-    {
         UpdateMeleeAttackingState();
-
-        Unit const* pVictim = GetVictim();
-        if (pVictim && !IsNonMeleeSpellCasted(false) && CanReachWithMeleeAutoAttack(pVictim))
-            TogglePlayerPvPFlagOnAttackVictim(pVictim);
-    }
 
     if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING))
     {
@@ -2491,7 +2500,6 @@ bool Player::ExecuteTeleportFar(ScheduledTeleportData* data)
                     data << m_teleport_dest.o;
                 }
                 GetSession()->SendPacket(&data);
-                SendMovementMessageToSet(std::move(data), true);
                 SendSavedInstances();
             };
             if (data->recover)
@@ -5088,8 +5096,7 @@ Corpse* Player::CreateCorpse()
     }
 
     // we not need saved corpses for BG/arenas
-    if (!GetMap()->IsBattleGround() &&
-        !IsBot())
+    if (!GetMap()->IsBattleGround() && !IsSavingDisabled())
         corpse->SaveToDB();
 
     // register for player, but not show
@@ -5403,19 +5410,13 @@ void Player::HandleBaseModValue(BaseModGroup modGroup, BaseModType modType, floa
         return;
     }
 
-    float val = 1.0f;
-
     switch (modType)
     {
         case FLAT_MOD:
             m_auraBaseMod[modGroup][modType] += apply ? amount : -amount;
             break;
         case PCT_MOD:
-            if (amount <= -100.0f)
-                amount = -200.0f;
-
-            val = (100.0f + amount) / 100.0f;
-            m_auraBaseMod[modGroup][modType] *= apply ? val : (1.0f / val);
+            ApplyPercentModFloatVar(m_auraBaseMod[modGroup][modType], amount, apply);
             break;
     }
 
@@ -6516,28 +6517,32 @@ void Player::CheckAreaExploreAndOutdoor()
                 SetRestType(REST_TYPE_NO);
             }
         }
-        // On reapplique les sorts retires lorsque l'on entre une zone interieure
+        // Check if we need to reaply outdoor only passive spells
         if (sWorld.getConfig(CONFIG_BOOL_VMAP_INDOOR_CHECK))
         {
-            // Celerite feline - Druide
-            if (GetShapeshiftForm() == FORM_CAT)
+            const PlayerSpellMap& spells = GetSpellMap();
+            for (const auto& itr : spells)
             {
-                PlayerSpellMap const& sp_list = GetSpellMap();
-                for (const auto& itr : sp_list)
+                if (itr.second.state == PLAYERSPELL_REMOVED)
+                    continue;
+                SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(itr.first);
+                if (!spellInfo || !spellInfo->IsNeedCastSpellAtOutdoor() || HasAura(itr.first))
+                    continue;
+                if ((spellInfo->Stances || spellInfo->StancesNot) && !spellInfo->IsNeedCastSpellAtFormApply(GetShapeshiftForm()))
+                    continue;
+                CastSpell(this, spellInfo, true);
+            }
+            for (auto& setData : m_itemSetEffects)
+            {
+                for (auto spellInfo : setData.second.spells)
                 {
-                    if (itr.second.state == PLAYERSPELL_REMOVED)
+                    if (!spellInfo || !spellInfo->IsNeedCastSpellAtOutdoor() || HasAura(spellInfo->Id))
                         continue;
-                    SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(itr.first);
-                    if (!spellInfo || !spellInfo->IsNeedCastSpellAtFormApply(GetShapeshiftForm()) ||
-                            !(spellInfo->Attributes & SPELL_ATTR_OUTDOORS_ONLY) ||
-                            HasAura(spellInfo->Id))
+                    if ((spellInfo->Stances || spellInfo->StancesNot) && !spellInfo->IsNeedCastSpellAtFormApply(GetShapeshiftForm()))
                         continue;
-                    CastSpell(this, itr.first, true);
+                    CastSpell(this, spellInfo, true);
                 }
             }
-            // Rapidite bestiale - Chasseur
-            if (HasSpell(19596) && !HasAura(19596))
-                CastSpell(this, 19596, true);
         }
     }
     else if (sWorld.getConfig(CONFIG_BOOL_VMAP_INDOOR_CHECK) && !IsGameMaster())
@@ -7589,12 +7594,9 @@ void Player::UpdateEquipSpellsAtFormChange()
     }
 
     // item set bonuses not dependent from item broken state
-    for (const auto eff : m_ItemSetEff)
+    for (auto& setData : m_itemSetEffects)
     {
-        if (!eff)
-            continue;
-
-        for (const auto spellInfo : eff->spells)
+        for (const auto spellInfo : setData.second.spells)
         {
             if (!spellInfo)
                 continue;
@@ -7704,7 +7706,7 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType)
                 else if (charges == 1)
                 {
                     ApplyEnchantment(item, TEMP_ENCHANTMENT_SLOT, false);
-                    item->ClearEnchantment(TEMP_ENCHANTMENT_SLOT);
+                    item->ClearEnchantment(TEMP_ENCHANTMENT_SLOT, true);
                 }
             }
         }
@@ -7726,7 +7728,7 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets const& targets)
             continue;
 
         // wrong triggering type
-        if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_USE && spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_NO_DELAY_USE)
+        if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_USE)
             continue;
 
         SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(spellData.SpellId);
@@ -7738,12 +7740,31 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets const& targets)
 
         RemoveAurasWithInterruptFlags(AURA_INTERRUPT_ITEM_USE_CANCELS, 0, false, spellInfo->HasAttribute(SPELL_ATTR_EX_NOT_BREAK_STEALTH));
 
-        Spell* spell = new Spell(this, spellInfo, (count > 0));
+        Spell* spell = new Spell(this, spellInfo, ((count > 0) || proto->HasExtraFlag(ITEM_EXTRA_CAST_AS_TRIGGERED)));
         spell->SetCastItem(item);
         spell->prepare(targets);
 
         ++count;
     }
+}
+
+ItemSetEffect* Player::GetItemSetEffect(uint32 setId)
+{
+    auto itr = m_itemSetEffects.find(setId);
+    if (itr == m_itemSetEffects.end())
+        return nullptr;
+
+    return &itr->second;
+}
+
+ItemSetEffect* Player::AddItemSetEffect(uint32 setId)
+{
+    return &m_itemSetEffects.emplace(setId, ItemSetEffect()).first->second;
+}
+
+void Player::RemoveItemSetEffect(uint32 setId)
+{
+    m_itemSetEffects.erase(setId);
 }
 
 void Player::_RemoveAllItemMods()
@@ -7919,7 +7940,8 @@ void Player::RemovedInsignia(Player* looterPlr, Corpse* corpse)
     if (!corpse)
         return;
 
-    WorldPacket data(SMSG_PLAYER_SKINNED,0);
+    WorldPacket data(SMSG_PLAYER_SKINNED,1);
+    data << uint8(0);
     GetSession()->SendPacket(&data);
 
     sObjectAccessor.ConvertCorpseForPlayer(GetObjectGuid(), looterPlr);
@@ -11992,7 +12014,7 @@ void Player::UpdateEnchantTime(uint32 time)
         else if (itr->leftduration <= time)
         {
             ApplyEnchantment(itr->item, itr->slot, false, false);
-            itr->item->ClearEnchantment(itr->slot);
+            itr->item->ClearEnchantment(itr->slot, true);
             next = m_enchantDuration.erase(itr);
         }
         else if (itr->leftduration > time)
@@ -12244,6 +12266,31 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
             // duration == 0 will remove EnchantDuration
             AddEnchantmentDuration(item, slot, 0);
         }
+    }
+}
+
+void Player::BuildEnchantmentLog(WorldPacket& data, ObjectGuid casterGuid, uint32 itemId, uint32 spellId, bool showAffiliation) const
+{
+    data << GetObjectGuid();
+    data << ObjectGuid(casterGuid); // message says enchant has faded if empty
+    data << uint32(itemId);
+    data << uint32(spellId);
+    data << uint8(showAffiliation); // only used if casterGuid is not empty
+}
+
+void Player::SendEnchantmentLog(ObjectGuid casterGuid, uint32 itemId, uint32 spellId) const
+{
+    WorldPacket data(SMSG_ENCHANTMENTLOG, (8 + 8 + 4 + 4 + 1));
+    BuildEnchantmentLog(data, casterGuid, itemId, spellId, false);
+    GetSession()->SendPacket(&data); // only to self
+
+    // unapply message should probably be sent only to self
+    // given that affiliation is not used in this case
+    if (!casterGuid.IsEmpty())
+    {
+        WorldPacket data2(SMSG_ENCHANTMENTLOG, (8 + 8 + 4 + 4 + 1));
+        BuildEnchantmentLog(data2, casterGuid, itemId, spellId, true);
+        SendMessageToSet(&data2, false); // exclude self
     }
 }
 
@@ -12640,7 +12687,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId)
 
 uint32 Player::GetGossipTextId(WorldObject* pSource)
 {
-    if (!pSource || pSource->GetTypeId() != TYPEID_UNIT)
+    if (!pSource || !pSource->IsCreature() || pSource->IsPet())
         return DEFAULT_GOSSIP_MESSAGE;
 
     if (uint32 pos = sObjectMgr.GetNpcGossip(((Creature*)pSource)->GetGUIDLow()))
@@ -12796,19 +12843,27 @@ void Player::SendPreparedQuest(ObjectGuid guid)
         // need pet case for some quests
         if (Creature* pCreature = GetMap()->GetAnyTypeCreature(guid))
         {
-            uint32 textid = sObjectMgr.GetNpcGossip(pCreature->GetGUIDLow());
+            uint32 textId;
+            if (pCreature->GetDefaultGossipMenuId())
+                textId = GetGossipTextId(pCreature->GetDefaultGossipMenuId(), pCreature);
+            else
+                textId = GetGossipTextId(pCreature);
 
-            NpcText const* gossiptext = sObjectMgr.GetNpcText(textid);
-            if (gossiptext && gossiptext->Options[0].BroadcastTextID)
+            // do not show placeholder text as quest greeting
+            if (textId != DEFAULT_GOSSIP_MESSAGE)
             {
-                if (BroadcastText const* bct = sObjectMgr.GetBroadcastTextLocale(gossiptext->Options[0].BroadcastTextID))
+                NpcText const* gossiptext = sObjectMgr.GetNpcText(textId);
+                if (gossiptext && gossiptext->Options[0].BroadcastTextID)
                 {
-                    qe._Emote = bct->emoteId1;
-                    qe._Delay = bct->emoteDelay1;
-                    int loc_idx = GetSession()->GetSessionDbLocaleIndex();
-                    title = bct->GetText(loc_idx, pCreature->GetGender(), false);
+                    if (BroadcastText const* bct = sObjectMgr.GetBroadcastTextLocale(gossiptext->Options[0].BroadcastTextID))
+                    {
+                        qe._Emote = bct->emoteId1;
+                        qe._Delay = bct->emoteDelay1;
+                        int loc_idx = GetSession()->GetSessionDbLocaleIndex();
+                        title = bct->GetText(loc_idx, pCreature->GetGender(), false);
+                    }
+
                 }
-                
             }
         }
         PlayerTalkClass->SendQuestGiverQuestList(qe, title, guid);
@@ -12879,8 +12934,8 @@ bool Player::CanSeeStartQuest(Quest const* pQuest) const
 {
     if (SatisfyQuestClass(pQuest, false) && SatisfyQuestRace(pQuest, false) && SatisfyQuestSkill(pQuest, false) && SatisfyQuestCondition(pQuest, false) &&
             SatisfyQuestExclusiveGroup(pQuest, false) && SatisfyQuestReputation(pQuest, false) &&
-            SatisfyQuestPreviousQuest(pQuest, false) && SatisfyQuestNextChain(pQuest, false) &&
-            SatisfyQuestPrevChain(pQuest, false) &&
+            SatisfyQuestPreviousQuest(pQuest, false) && SatisfyQuestBreadcrumbQuest(pQuest, false) && SatisfyQuestDependentBreadcrumbQuests(pQuest, false) && 
+            SatisfyQuestNextChain(pQuest, false) && SatisfyQuestPrevChain(pQuest, false) &&
             pQuest->IsActive())
     {
         int32 highLevelDiff = sWorld.getConfig(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF);
@@ -12902,6 +12957,7 @@ bool Player::CanTakeQuest(Quest const* pQuest, bool msg, bool skipStatusCheck /*
            SatisfyQuestSkill(pQuest, msg) && SatisfyQuestCondition(pQuest, msg) && SatisfyQuestReputation(pQuest, msg) &&
            SatisfyQuestPreviousQuest(pQuest, msg) && SatisfyQuestTimed(pQuest, msg) &&
            SatisfyQuestNextChain(pQuest, msg) && SatisfyQuestPrevChain(pQuest, msg) &&
+           SatisfyQuestBreadcrumbQuest(pQuest, msg) && SatisfyQuestDependentBreadcrumbQuests(pQuest, msg) &&
            pQuest->IsActive();
 }
 
@@ -13781,6 +13837,42 @@ bool Player::SatisfyQuestPreviousQuest(Quest const* qInfo, bool msg) const
         SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
 
     return false;
+}
+
+bool Player::SatisfyQuestBreadcrumbQuest(Quest const* qInfo, bool msg) const
+{
+    // If the target quest is not available, then we cannot accept the breadcrumb
+    uint32 breadcrumbTargetQuestId = qInfo->GetBreadcrumbForQuestId();
+    if (!breadcrumbTargetQuestId)
+        return true;
+
+    if (!CanTakeQuest(sObjectMgr.GetQuestTemplate(breadcrumbTargetQuestId), false))
+    {
+        if (msg)
+            SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool Player::SatisfyQuestDependentBreadcrumbQuests(Quest const* qInfo, bool msg) const
+{
+    // If we have one of the breadcrumb quests, then we can't accept the target quest
+    for (uint32 breadcrumbQuestId : qInfo->DependentBreadcrumbQuests)
+    {
+        QuestStatus status = GetQuestStatus(breadcrumbQuestId);
+        if ((status == QUEST_STATUS_INCOMPLETE || status == QUEST_STATUS_COMPLETE || status == QUEST_STATUS_FAILED) && !GetQuestRewardStatus(breadcrumbQuestId))
+        {
+            if (msg)
+                SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
+
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool Player::SatisfyQuestClass(Quest const* qInfo, bool msg) const
@@ -15109,6 +15201,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
                 m_movementInfo.ClearTransportData();
 
                 RelocateToHomebind();
+                if (GetMapId() <= 1)
+                    SetLocationInstanceId(sMapMgr.GetContinentInstanceId(GetMapId(), GetPositionX(), GetPositionY()));
+                SetMap(sMapMgr.CreateMap(GetMapId(), this));
             }
             else
             {
@@ -15129,6 +15224,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
                           guid.GetString().c_str(), transGUID);
 
             RelocateToHomebind();
+            if (GetMapId() <= 1)
+                SetLocationInstanceId(sMapMgr.GetContinentInstanceId(GetMapId(), GetPositionX(), GetPositionY()));
+            SetMap(sMapMgr.CreateMap(GetMapId(), this));
         }
     }
 
@@ -15443,7 +15541,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
                     SetAcceptWhispers(true);
                 break;
         }
-        SetCheatGod(true);
+
+        SetCheatGod(sWorld.getConfig(CONFIG_BOOL_GM_CHEAT_GOD));
     }
 
     if (extraflags & PLAYER_EXTRA_WHISP_RESTRICTION)
@@ -16640,12 +16739,10 @@ void Player::SaveToDB(bool online, bool force)
     m_nextSave = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
 
     // Do not save bots
-    if (IsBot())
-        return;
-    if (m_DbSaveDisabled)
+    if (IsSavingDisabled())
         return;
 
-    //lets allow only players in world to be saved
+    // lets allow only players in world to be saved
     if (!force && IsBeingTeleportedFar())
     {
         ScheduleDelayedOperation(DELAYED_SAVE_PLAYER);
@@ -16851,6 +16948,9 @@ void Player::SaveToDB(bool online, bool force)
 // relogging before the query completes
 void Player::SaveInventoryAndGoldToDB()
 {
+    if (IsSavingDisabled())
+        return;
+
     bool haveTransaction = CharacterDatabase.InTransaction();
     if (!haveTransaction)
         CharacterDatabase.BeginTransaction(GetGUIDLow());
@@ -16868,6 +16968,9 @@ void Player::SaveInventoryAndGoldToDB()
 // relogging before the query completes
 void Player::SaveGoldToDB()
 {
+    if (IsSavingDisabled())
+        return;
+
     static SqlStatementID updateGold ;
 
     SqlStatement stmt = CharacterDatabase.CreateStatement(updateGold, "UPDATE `characters` SET `money` = ? WHERE `guid` = ?");
@@ -19286,7 +19389,7 @@ void Player::ApplyEquipCooldown(Item* pItem)
         if (!spellData.SpellId)
             continue;
 
-        // wrong triggering type (note: ITEM_SPELLTRIGGER_ON_NO_DELAY_USE not have cooldown)
+        // wrong triggering type
         if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_USE)
             continue;
 
@@ -20533,6 +20636,22 @@ void Player::LearnSpellHighRank(uint32 spellid)
     sSpellMgr.doForHighRanks(spellid, worker);
 }
 
+
+uint32 Player::GetSpellRank(SpellEntry const* spellInfo) const
+{
+    SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(spellInfo->Id);
+    if (bounds.first != bounds.second)
+    {
+        SkillLineAbilityEntry const* skillInfo = bounds.first->second;
+        uint32 spellRank = GetSkillValue(skillInfo->skillId);
+        if (spellInfo->maxLevel > 0 && spellRank >= spellInfo->maxLevel * 5)
+            spellRank = spellInfo->maxLevel * 5;
+        return spellRank;
+    }
+    else
+        return 0;
+}
+
 void Player::_LoadSkills(QueryResult* result)
 {
     //                                                           0      1      2
@@ -21106,11 +21225,11 @@ void Player::RemoveTemporaryAI()
 {
     PlayerBotEntry* pBot = GetSession()->GetBot();
 
-    if (!pBot || (pBot->ai != AI()))
+    if (!pBot || (pBot->ai.get() != AI()))
         RemoveAI();
 
-    if (pBot && (pBot->ai != AI()))
-        SetAI(pBot->ai);
+    if (pBot && (pBot->ai.get() != AI()))
+        SetAI(pBot->ai.get());
 }
 
 void Player::SetControlledBy(Unit* pWho)
@@ -21120,7 +21239,7 @@ void Player::SetControlledBy(Unit* pWho)
         PlayerBotEntry* pBot = GetSession()->GetBot();
 
         // Careful not to delete bot ai
-        if (!pBot || (pBot->ai != i_AI))
+        if (!pBot || (pBot->ai.get() != i_AI))
             delete i_AI;
 
         i_AI = nullptr;
@@ -21133,6 +21252,12 @@ void Player::SetControlledBy(Unit* pWho)
 
 bool Player::ChangeRace(uint8 newRace)
 {
+    if (IsSavingDisabled() || IsBot())
+    {
+        sLog.outError("Cannot change race of bot or temporary character!");
+        return false;
+    }
+
     PlayerInfo const* info = sObjectMgr.GetPlayerInfo(newRace, GetClass());
     if (!info)
         return false;
@@ -21140,14 +21265,14 @@ bool Player::ChangeRace(uint8 newRace)
     uint8 oldRace = GetRace();
     bool bChangeTeam = (TeamForRace(oldRace) != TeamForRace(newRace));
 
-    m_DbSaveDisabled = true;
+    m_saveDisabled = true;
     if (!ChangeSpellsForRace(oldRace, newRace))
     {
-        CHANGERACE_ERR("Impossible de changer les spells.");
+        CHANGERACE_ERR("Cannot change spells.");
         return false;
     }
 
-    // Le chanegement de race en lui meme.
+    // Change the race
     SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_RACE, newRace);
     LearnDefaultSpells();
 
@@ -21155,30 +21280,31 @@ bool Player::ChangeRace(uint8 newRace)
 
     if (!ChangeReputationsForRace(oldRace, newRace))
     {
-        CHANGERACE_ERR("Impossible de changer les reputations.");
+        CHANGERACE_ERR("Cannot change reputations.");
         return false;
     }
     if (!ChangeQuestsForRace(oldRace, newRace))
     {
-        CHANGERACE_ERR("Impossible de changer les quetes.");
+        CHANGERACE_ERR("Cannot change quests.");
         return false;
     }
     if (!ChangeItemsForRace(oldRace, newRace))
     {
-        CHANGERACE_ERR("Impossible de changer les items.");
+        CHANGERACE_ERR("Cannot change items.");
         return false;
     }
-    /*
-    On sauvegarde le changement de faction, et apres faut deco-reco.
-    */
-    m_DbSaveDisabled = false;
-    // Suppression des montures mises
+
+    // Unmount in case of faction specific mount
     RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+
+    // Save with the new race
+    m_saveDisabled = false;
     SaveToDB();
-    m_DbSaveDisabled = true;
+    m_saveDisabled = true;
+
     if (bChangeTeam)
     {
-        // Changement de HomeBind / Teleportation capitale
+        // Change home location to capital city
         if (TeamForRace(newRace) == ALLIANCE)
         {
             SavePositionInDB(GetObjectGuid(), 0, -8867.68f, 673.373f, 97.9034f, 0.0f, 1519);
@@ -21190,11 +21316,12 @@ bool Player::ChangeRace(uint8 newRace)
             SetHomebindToLocation(WorldLocation(1, 1633.33f, -4439.11f, 15.7588f, 0.0f), 1637);
         }
     }
-    // Sauvegarde dans ObjectMgr aussi (sinon mauvaise faction prise en compte dans la distrib PvP)
-    if (PlayerCacheData* data = sObjectMgr.GetPlayerDataByGUID(GetGUIDLow()))
-        data->uiRace = newRace;
+
+    ObjectGuid guid = GetObjectGuid();
 
     m_session->LogoutPlayer(false);
+    sWorld.InvalidatePlayerDataToAllClient(guid);
+
     return true;
 }
 
@@ -22079,15 +22206,8 @@ void Player::AddGCD(SpellEntry const& spellEntry, uint32 /*forcedDuration = 0*/,
         return;
 
     // TODO: Remove this once spells are queuable and GCD is checked on execute
-    if (uint32 latency = GetSession()->GetLatency())
-    {
-        if (latency > 300)
-            gcdDuration -= 300;
-        else
-            gcdDuration -= latency;
-
-        gcdDuration -= sWorld.GetCurrentDiff() > 200 ? 200 : sWorld.GetCurrentDiff();
-    }
+    gcdDuration -= std::min<int32>(300, GetSession()->GetLatency());
+    gcdDuration -= std::min<int32>(200, sWorld.GetCurrentDiff());
 
     SpellCaster::AddGCD(spellEntry, gcdDuration);
 
@@ -22334,6 +22454,10 @@ void Player::CastHighestStealthRank()
 
     // no Stealth spell found
     if (!stealthSpellEntry)
+        return;
+
+    // not if prevented by faerie fire
+    if (IsImmuneToSpell(stealthSpellEntry, true))
         return;
 
     // reset cooldown on it if needed
