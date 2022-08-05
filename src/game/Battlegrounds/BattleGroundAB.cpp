@@ -138,7 +138,7 @@ void BattleGroundAB::Update(uint32 diff)
                 if (team == BG_TEAM_HORDE)
                     UpdateWorldState(BG_AB_OP_RESOURCES_HORDE, m_teamScores[team]);
 #ifdef USE_ACHIEVEMENTS
-                if (m_TeamScores[team] > m_TeamScores[GetOtherTeam((Team)team)] + 500)
+                if (m_teamScores[team] > m_teamScores[GetOtherTeam((Team)team)] + 500)
                     _teamScores500Disadvantage[GetOtherTeam((Team)team)] = true;
 #endif
             }

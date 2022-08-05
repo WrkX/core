@@ -403,12 +403,12 @@ void BattleGroundAV::HandleKillUnit(Creature* creature, Player* killer)
             {
                 ChangeMineOwner(BG_AV_SOUTH_MINE, GetAVTeamIndexByTeamId(killer->GetTeam()));
                 CompleteQuestForAll(7122);
-            }   
+            }
             else if (killer->GetTeam() == HORDE)
             {
                 ChangeMineOwner(BG_AV_SOUTH_MINE, GetAVTeamIndexByTeamId(killer->GetTeam()));
                 CompleteQuestForAll(7124);
-            }   
+            }
             else // Never happens, this function HandleKillUnit is only called if a player kill a unit
                 ChangeMineOwner(BG_AV_SOUTH_MINE, BG_AV_TEAM_NEUTRAL);
             break;
@@ -529,7 +529,7 @@ void BattleGroundAV::HandleQuestComplete(Unit* questGiver, uint32 questid, Playe
                 sprintf(sMessageRemaining,"Thanks for the supplies, %s",player->GetName());
                 ((Creature*)questGiver)->MonsterSay(sMessageRemaining, 0, 0);
 
-                if (m_teamQuestStatus[teamIdx][0] == 500)                    
+                if (m_teamQuestStatus[teamIdx][0] == 500)
                 {
                     if (teamIdx == 0)
                         CastSpellOnTeam(28418, ALLIANCE);
@@ -539,7 +539,7 @@ void BattleGroundAV::HandleQuestComplete(Unit* questGiver, uint32 questid, Playe
                    sprintf(sMessageRemaining,"Seasoned units are entering the battle!");
                    ((Creature*)questGiver)->MonsterYell(sMessageRemaining, 0, 0);
                 }
-                else if (m_teamQuestStatus[teamIdx][0] == 1000)                    
+                else if (m_teamQuestStatus[teamIdx][0] == 1000)
                 {
                     if (teamIdx == 0)
                         CastSpellOnTeam(28419, ALLIANCE);
@@ -549,7 +549,7 @@ void BattleGroundAV::HandleQuestComplete(Unit* questGiver, uint32 questid, Playe
                     sprintf(sMessageRemaining,"Veteran units are entering the battle!");
                     ((Creature*)questGiver)->MonsterYell(sMessageRemaining, 0, 0);
                 }
-                else if (m_teamQuestStatus[teamIdx][0] == 1500)                    
+                else if (m_teamQuestStatus[teamIdx][0] == 1500)
                 {
                     if (teamIdx == 0)
                         CastSpellOnTeam(28420, ALLIANCE);
@@ -602,7 +602,7 @@ void BattleGroundAV::HandleQuestComplete(Unit* questGiver, uint32 questid, Playe
                     if (m_nodes[i].owner == teamIdx && m_nodes[i].state == POINT_CONTROLLED)
                         PopulateNode(i);
             }
-*/ 
+*/
            break;
         case BG_AV_QUEST_A_COMMANDER1:
         case BG_AV_QUEST_H_COMMANDER1:
@@ -1729,7 +1729,7 @@ SpellCastResult BattleGroundAV::CheckSpellCast(Player* caster, SpellEntry const*
 
 bool BattleGroundAV::IsBothMinesControlledByTeam(TeamId teamId) const
 {
-    for (auto mine : m_Mine_Owner)
+    for (auto mine : m_mineOwner)
         if (mine != teamId)
             return false;
 
@@ -1742,9 +1742,9 @@ bool BattleGroundAV::IsAllTowersControlledAndCaptainAlive(TeamId teamId) const
     {
         for (BG_AV_Nodes i = BG_AV_NODES_DUNBALDAR_SOUTH; i <= BG_AV_NODES_STONEHEART_BUNKER; ++i) // alliance towers controlled
         {
-            if (m_Nodes[i].State == POINT_CONTROLLED)
+            if (m_nodes[i].state == POINT_CONTROLLED)
             {
-                if (m_Nodes[i].Owner != TEAM_ALLIANCE)
+                if (m_nodes[i].owner != TEAM_ALLIANCE)
                     return false;
             }
             else
@@ -1752,7 +1752,7 @@ bool BattleGroundAV::IsAllTowersControlledAndCaptainAlive(TeamId teamId) const
         }
 
         for (BG_AV_Nodes i = BG_AV_NODES_ICEBLOOD_TOWER; i <= BG_AV_NODES_FROSTWOLF_WTOWER; ++i) // horde towers destroyed
-            if (m_Nodes[i].State != POINT_ASSAULTED)
+            if (m_nodes[i].state != POINT_ASSAULTED)
                 return false;
 
         return m_CaptainAlive[0];
@@ -1761,9 +1761,9 @@ bool BattleGroundAV::IsAllTowersControlledAndCaptainAlive(TeamId teamId) const
     {
         for (BG_AV_Nodes i = BG_AV_NODES_ICEBLOOD_TOWER; i <= BG_AV_NODES_FROSTWOLF_WTOWER; ++i) // horde towers controlled
         {
-            if (m_Nodes[i].State == POINT_CONTROLLED)
+            if (m_nodes[i].state == POINT_CONTROLLED)
             {
-                if (m_Nodes[i].Owner != TEAM_HORDE)
+                if (m_nodes[i].owner != TEAM_HORDE)
                     return false;
             }
             else
@@ -1771,7 +1771,7 @@ bool BattleGroundAV::IsAllTowersControlledAndCaptainAlive(TeamId teamId) const
         }
 
         for (BG_AV_Nodes i = BG_AV_NODES_DUNBALDAR_SOUTH; i <= BG_AV_NODES_STONEHEART_BUNKER; ++i) // alliance towers destroyed
-            if (m_Nodes[i].State != POINT_ASSAULTED)
+            if (m_nodes[i].state != POINT_ASSAULTED)
                 return false;
 
         return m_CaptainAlive[1];
