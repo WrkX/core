@@ -238,6 +238,7 @@ struct AchievementEntry
     uint32 titleReward_flags;                             // 59
     uint32 count;                                           // 60 - need this count of completed criterias (own or referenced achievement criterias)
     uint32 refAchievement;                                  // 61 - referenced achievement (counting of all completed criterias)
+    uint32 patch;
 };
 
 struct AchievementCategoryEntry
@@ -247,6 +248,7 @@ struct AchievementCategoryEntry
     char *name[16];                                       // 2-17
     uint32 name_flags;                                    // 18
     uint32    sortOrder;                                  // 19
+    uint32 patch;
 };
 
 struct AchievementCriteriaEntry
@@ -977,6 +979,7 @@ public:
     void RemoveTimedAchievement(AchievementCriteriaTimedTypes type, uint32 entry);   // used for quest and scripted timed achievements
 
     void RemoveCriteriaProgress(AchievementCriteriaEntry const* entry);
+
 private:
     enum ProgressType { PROGRESS_SET, PROGRESS_ACCUMULATE, PROGRESS_HIGHEST, PROGRESS_RESET };
     void SendAchievementEarned(AchievementEntry const* achievement) const;
@@ -1006,6 +1009,14 @@ public:
 
     bool IsStatisticCriteria(AchievementCriteriaEntry const* achievementCriteria) const;
     bool isStatisticAchievement(AchievementEntry const* achievement) const;
+
+    void getAllCategories(WorldSession* session, int version) const;
+    void getAllAchievements(WorldSession* session, int version) const;
+    void getAllCriteria(WorldSession* session, int version) const;
+
+    void getCharacterCriteria(WorldSession* session) const;
+    void getCharacterAchievements(WorldSession* session) const;
+
 
     [[nodiscard]] AchievementCriteriaEntryList const* GetAchievementCriteriaByType(AchievementCriteriaTypes type) const
     {

@@ -53,10 +53,10 @@
 // #include "WorldPacket.h"
 #include "SpellMgr.h"
 
-char constexpr Achievementfmt[] = "iiiissssssssssssssssissssssssssssssssiiiiiissssssssssssssssiii";
+char constexpr Achievementfmt[] = "iiiissssssssssssssssissssssssssssssssiiiiiissssssssssssssssiiii";
 SQLStorage sAchievementStore(Achievementfmt, "ID", "achievement_dbc");
 
-char constexpr AchievementCategoryfmt[] = "iissssssssssssssssii";
+char constexpr AchievementCategoryfmt[] = "iissssssssssssssssiii";
 SQLStorage sAchievementCategoryStore(AchievementCategoryfmt, "ID", "achievement_category_dbc");
 
 char constexpr AchievementCriteriafmt[] = "iiiiiiiiissssssssssssssssiiiiii";
@@ -618,8 +618,8 @@ void AchievementMgr::SaveToDB() {
             if (!iter->second.changed)
                 continue;
 
-            CharacterDatabase.PExecute("DELETE FROM `character_achievement` WHERE `achievement` = '%u' AND `guid` = '%u'", 
-                iter->first, 
+            CharacterDatabase.PExecute("DELETE FROM `character_achievement` WHERE `achievement` = '%u' AND `guid` = '%u'",
+                iter->first,
                 GetPlayer()->GetGUIDLow()
             );
             // CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHAR_ACHIEVEMENT_BY_ACHIEVEMENT); //  "DELETE FROM character_achievement WHERE achievement = ? AND guid = ?"
@@ -627,7 +627,7 @@ void AchievementMgr::SaveToDB() {
             // stmt->setUInt32(1, GetPlayer()->GetGUID().GetCounter());
             // trans->Append(stmt);
 
-            CharacterDatabase.PExecute("INSERT INTO `character_achievement` (`guid`, `achievement`, `date`) VALUES ('%u', '%u', '%u')", 
+            CharacterDatabase.PExecute("INSERT INTO `character_achievement` (`guid`, `achievement`, `date`) VALUES ('%u', '%u', '%u')",
                 GetPlayer()->GetGUIDLow(),
                 iter->first,
                 uint32(iter->second.date)
@@ -649,7 +649,7 @@ void AchievementMgr::SaveToDB() {
             if (!iter->second.changed)
                 continue;
 
-            CharacterDatabase.PExecute("DELETE FROM `character_achievement_progress` WHERE `guid` = '%u' AND `criteria` = '%u'", 
+            CharacterDatabase.PExecute("DELETE FROM `character_achievement_progress` WHERE `guid` = '%u' AND `criteria` = '%u'",
                 GetPlayer()->GetGUIDLow(),
                 iter->first
             );
@@ -660,7 +660,7 @@ void AchievementMgr::SaveToDB() {
 
             // // pussywizard: insert only for (counter != 0) is very important! this is how criteria of completed achievements gets deleted from db (by setting counter to 0); if conflicted during merge - contact me
             if (iter->second.counter) {
-                CharacterDatabase.PExecute("INSERT INTO `character_achievement_progress` (`guid`, `criteria`, `counter`, `date`) VALUES ('%u', '%u', '%u', '%u')", 
+                CharacterDatabase.PExecute("INSERT INTO `character_achievement_progress` (`guid`, `criteria`, `counter`, `date`) VALUES ('%u', '%u', '%u', '%u')",
                     GetPlayer()->GetGUIDLow(),
                     iter->first,
                     iter->second.counter,
@@ -747,6 +747,8 @@ void AchievementMgr::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder) {
 
 void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement) const
 {
+    const auto date = m_completedAchievements.at(achievement->ID).date;
+
     if (GetPlayer()->GetSession()->PlayerLoading())
         return;
 
@@ -810,49 +812,46 @@ void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement) 
     // data << uint32(0);
     // GetPlayer()->SendMessageToSetInRange(&data, sWorld.getFloatConfig(CONFIG_LISTEN_RANGE_SAY), true);
     if (!achievement || !achievement->name[0] || !achievement->description[0] || !achievement->titleReward[0]) return;
-    auto const* category = sAchievementCategoryStore.LookupEntry<AchievementCategoryEntry>(achievement->categoryId);
-    if (!category || !category->name[0]) return;
 
-    std::string breadCrumbs;
-    auto categoryId = achievement->categoryId;
-    do {
-        auto const* categoryTemp = sAchievementCategoryStore.LookupEntry<AchievementCategoryEntry>(categoryId);
-        if (categoryTemp && categoryTemp->name[0]) {
-            categoryId = categoryTemp->parentCategory;
-            breadCrumbs = std::string(categoryTemp->name[0]) + std::string("/") + breadCrumbs;
-        }
-    } while (categoryId != -1);
-
-    ChatHandler(m_player).PSendSysMessage("ACHI|AE|%u|%s%s|%i|%s|%i|%u|%u|%u|%i|%u|%s|%i|%u|%u|%s|%i|%u"
+    ChatHandler(m_player).PSendSysMessage(
+        "ACHI|AE|%u;%u"
         , achievement->ID
-        , breadCrumbs.c_str(), achievement->name[0]
-        , achievement->name_flags
-        , achievement->description[0]
-        , achievement->desc_flags
-        , achievement->categoryId
-        , achievement->points
-        , achievement->OrderInCategory
-        , achievement->flags
-        , achievement->icon
-        , achievement->titleReward[0]
-        , achievement->titleReward_flags
-        , achievement->count
-        , achievement->refAchievement
-        , category->name[0]
-        , category->name_flags
-        , category->sortOrder);
+        , uint32(date)
+    );
 
-    ChatHandler(m_player).PSendSysMessage("Achievement earned: %s[%s], x%u points (%s)", breadCrumbs.c_str(), achievement->name[0], achievement->points, achievement->description[0]);
+    // ChatHandler(m_player).PSendSysMessage("ACHI|AE|%u|%s%s|%i|%s|%i|%u|%u|%u|%i|%u|%s|%i|%u|%u|%s|%i|%u"
+    //     , achievement->ID
+    //     , m_completedAchievements[achievement->ID]
+    //     , breadCrumbs.c_str(), achievement->name[0]
+    //     , achievement->name_flags
+    //     , achievement->description[0]
+    //     , achievement->desc_flags
+    //     , achievement->categoryId
+    //     , achievement->points
+    //     , achievement->OrderInCategory
+    //     , achievement->flags
+    //     , achievement->icon
+    //     , achievement->titleReward[0]
+    //     , achievement->titleReward_flags
+    //     , achievement->count
+    //     , achievement->refAchievement
+    //     , category->name[0]
+    //     , category->name_flags
+    //     , category->sortOrder);
+
+    // ChatHandler(m_player).PSendSysMessage("Achievement earned: %s[%s], x%u points (%s)", breadCrumbs.c_str(), achievement->name[0], achievement->points, achievement->description[0]);
 }
 
 void AchievementMgr::SendCriteriaUpdate(AchievementCriteriaEntry const* entry, CriteriaProgress const* progress, uint32 timeElapsed, bool timedCompleted) const
 {
     if (!entry || !progress->changed) return;
-    ChatHandler(m_player).PSendSysMessage("ACHI|ACU|%u|%u|%u|%u"
+
+    ChatHandler(m_player).PSendSysMessage("ACHI|ACU|%u;%u;%u;%u"
         , entry->ID
         , entry->referredAchievement
         , progress->counter
-        , static_cast<uint64>(progress->date));
+        , uint32(progress->date)
+    );
 
     // WorldPacket data(SMSG_CRITERIA_UPDATE, 8 + 4 + 8);
     // data << uint32(entry->ID);
@@ -970,7 +969,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
         return;
 
     const auto size = achievementCriteriaList->size();
-    
+
     sAchievementScriptMgr->OnBeforeCheckCriteria(this, achievementCriteriaList);
 
     for (AchievementCriteriaEntryList::const_iterator i = achievementCriteriaList->begin(); i != achievementCriteriaList->end(); ++i)
@@ -2346,10 +2345,10 @@ void AchievementMgr::CompletedAchievement(AchievementEntry const* achievement)
         sLog.outInfo("AchievementMgr::CompletedAchievement(%u) %s %s[%s], %u points (%s)", achievement->ID, m_player->GetName(), breadCrumbs.c_str(), achievement->name[0], achievement->points, achievement->description[0]);
     }
 
-    SendAchievementEarned(achievement);
     CompletedAchievementData& ca = m_completedAchievements[achievement->ID];
     ca.date = time(nullptr);
     ca.changed = true;
+    SendAchievementEarned(achievement);
 
     sAchievementScriptMgr->OnAchievementComplete(GetPlayer(), achievement);
 
@@ -2529,6 +2528,161 @@ bool AchievementMgr::CanUpdateCriteria(AchievementCriteriaEntry const* criteria,
         return false;
 
     return true;
+}
+void AchievementGlobalMgr::getAllCategories(WorldSession* session, int version) const {
+    if (version >= 1) { return; }
+    const auto maxId = sAchievementCategoryStore.GetMaxEntry();
+    const auto count = sAchievementCategoryStore.GetRecordCount();
+    uint32 i = 0;
+    for (uint32 entryId = 0; entryId < maxId; ++entryId) {
+        AchievementCategoryEntry const* category = sAchievementCategoryStore.LookupEntry<AchievementCategoryEntry>(entryId);
+        if (!category)
+            continue;
+
+        const auto* name = std::strlen(category->name[0]) <= 2 ? "_" : category->name[0];
+
+        ChatHandler(session).PSendSysMessage(
+            "ACHI|CA|%u;%i;%s;%i;%u;%u"
+            , category->ID
+            , category->parentCategory
+            , name
+            , category->sortOrder
+            , ++i
+            , count
+        );
+    }
+
+    ChatHandler(session).PSendSysMessage("ACHI|CAV|1");
+}
+
+void AchievementGlobalMgr::getAllAchievements(WorldSession* session, int version) const {
+    if (version >= 1) { return; }
+    const auto maxId = sAchievementStore.GetMaxEntry();
+    const auto count = sAchievementStore.GetRecordCount();
+    uint32 i = 0;
+    for (uint32 entryId = 0; entryId < maxId; ++entryId) {
+        AchievementEntry const* achievement = sAchievementStore.LookupEntry<AchievementEntry>(entryId);
+        if (!achievement)
+            continue;
+
+        const auto* name = std::strlen(achievement->name[0]) <= 2 ? "_" : achievement->name[0];
+        const auto* description = std::strlen(achievement->description[0]) <= 2 ? "_" : achievement->description[0];
+        const auto* titleReward = std::strlen(achievement->titleReward[0]) <= 2 ? "_" : achievement->titleReward[0];
+
+        ChatHandler(session).PSendSysMessage(
+            "ACHI|AC|%u;%i;%i;%s;%s;%u;%u;%u;%i;%u;%s;%i;%u;%u;%u"
+            , achievement->ID
+            , achievement->requiredFaction
+            , achievement->parentAchievement
+            , name
+            , description
+            , achievement->categoryId
+            , achievement->points
+            , achievement->OrderInCategory
+            , achievement->flags
+            , achievement->icon
+            , titleReward
+            , achievement->count
+            , achievement->refAchievement
+            , ++i
+            , count
+        );
+    }
+
+    ChatHandler(session).PSendSysMessage("ACHI|ACV|1");
+}
+
+void AchievementGlobalMgr::getAllCriteria(WorldSession* session, int version) const {
+    if (version >= 1) { return; }
+    const auto maxId = sAchievementCriteriaStore.GetMaxEntry();
+    const auto count = sAchievementCriteriaStore.GetRecordCount();
+    uint32 i = 0;
+    for (uint32 entryId = 0; entryId < maxId; ++entryId) {
+        AchievementCriteriaEntry const* criteria = sAchievementCriteriaStore.LookupEntry<AchievementCriteriaEntry>(entryId);
+        if (!criteria)
+            continue;
+
+        const auto* name = std::strlen(criteria->name[0]) <= 2 ? "_" : criteria->name[0];
+
+        ChatHandler(session).PSendSysMessage(
+            "ACHI|CR|%u;%i;%i;%i;%i;%i;%i;%i;%i;%s;%i;%i;%i;%i;%i;%u;%u"
+            , criteria->ID
+            , criteria->referredAchievement
+            , criteria->requiredType
+            , criteria->raw.field3
+            , criteria->raw.count
+            , criteria->additionalRequirements[0].additionalRequirement_type
+            , criteria->additionalRequirements[0].additionalRequirement_value
+            , criteria->additionalRequirements[1].additionalRequirement_type
+            , criteria->additionalRequirements[1].additionalRequirement_value
+            , name
+            , criteria->flags
+            , criteria->timedType
+            , criteria->timerStartEvent
+            , criteria->timeLimit
+            , criteria->showOrder
+            , ++i
+            , count
+        );
+    }
+
+    ChatHandler(session).PSendSysMessage("ACHI|CRV|1");
+}
+
+void AchievementGlobalMgr::getCharacterCriteria(WorldSession* session) const {
+    const auto playerGuid = session->GetPlayer()->GetGUIDLow();
+    std::unique_ptr<QueryResult> criteriaResult(CharacterDatabase.PQuery("SELECT `criteria`, `counter`, `date` FROM `character_achievement_progress` WHERE `guid` = '%u'", playerGuid));
+    if (criteriaResult) {
+        do {
+            Field* fields = criteriaResult->Fetch();
+            uint32 id      = fields[0].GetUInt16();
+            uint32 counter = fields[1].GetUInt32();
+            const auto  date    = time_t(fields[2].GetUInt32());
+
+            AchievementCriteriaEntry const* criteria = sAchievementCriteriaStore.LookupEntry<AchievementCriteriaEntry>(id);
+            if (!criteria) {
+                continue;
+            }
+
+            if (criteria->timeLimit && time_t(date + criteria->timeLimit) < time(nullptr)) {
+                continue;
+            }
+
+            ChatHandler(session).PSendSysMessage(
+                "ACHI|CH_CR|%u;%i;%u"
+                , id
+                , counter
+                , uint32(date)
+            );
+
+        } while (criteriaResult->NextRow());
+    }
+}
+
+void AchievementGlobalMgr::getCharacterAchievements(WorldSession* session) const {
+    const auto playerGuid = session->GetPlayer()->GetGUIDLow();
+    std::unique_ptr<QueryResult> achievementResult(CharacterDatabase.PQuery("SELECT `achievement`, `date` FROM `character_achievement` WHERE `guid` = '%u'", playerGuid));
+    if (achievementResult) {
+        do {
+            Field* fields = achievementResult->Fetch();
+            uint32 achievementid = fields[0].GetUInt16();
+
+            AchievementEntry const* achievement = sAchievementStore.LookupEntry<AchievementEntry>(achievementid);
+            if (!achievement) {
+                continue;
+            }
+
+            const auto date = time_t(fields[1].GetUInt32());
+
+
+            ChatHandler(session).PSendSysMessage(
+                "ACHI|CH_AC|%u;%u"
+                , achievementid
+                , uint32(date)
+            );
+
+        } while (achievementResult->NextRow());
+    }
 }
 
 AchievementGlobalMgr* AchievementGlobalMgr::instance()
