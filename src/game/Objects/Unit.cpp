@@ -796,8 +796,9 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
 
 #ifdef USE_ACHIEVEMENTS_ENABLE_ALL
 
-    //if (pVictim->GetTypeId() == TYPEID_PLAYER)
-       pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_RECEIVED, damage); // pussywizard: optimization
+    if (pVictim->GetTypeId() == TYPEID_PLAYER) {
+        pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_RECEIVED, damage); // pussywizard: optimization
+    }
 
 #endif
 #endif
@@ -812,8 +813,12 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
 #ifdef USE_ACHIEVEMENTS
 #ifdef USE_ACHIEVEMENTS_ENABLE_ALL
 
-        //if (pVictim->GetTypeId() == TYPEID_PLAYER && pVictim != this)  // NOTE(TsAah): uncomment for optimization
-            pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, health); // pussywizard: optimization
+        if (pVictim->GetTypeId() == TYPEID_PLAYER && pVictim != this) {
+            auto* player = pVictim->ToPlayer();
+            if (player) {
+                player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, health); // pussywizard: optimization
+            }
+        }
 
 #endif
 #endif
@@ -841,8 +846,9 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
 #ifdef USE_ACHIEVEMENTS
 #ifdef USE_ACHIEVEMENTS_ENABLE_ALL
 
-        // if (pVictim->GetTypeId() == TYPEID_PLAYER) // NOTE(TsAah): uncomment for optimization
+        if (pVictim->GetTypeId() == TYPEID_PLAYER) {
             pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, damage); // pussywizard: optimization
+        }
 #endif
 #endif
 

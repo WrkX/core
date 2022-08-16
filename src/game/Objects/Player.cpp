@@ -20109,7 +20109,8 @@ void Player::RewardSinglePlayerAtKill(Unit* pVictim)
         if (!InBattleGround()) {
             if (!GetGroup() || IsAlive() || !GetCorpse()) {
                 if (Creature* target = pVictim->ToCreature()) {
-                    UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE, target->GetCreatureType(), 1, target);
+                    const auto creatureType = target->GetCreatureType();
+                    UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE, creatureType, 1, target);
                 }
             }
         }
