@@ -785,16 +785,21 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
             //if (!allowGM && killer->GetSession()->GetSecurity() && killer->GetSession()->GetSecurity() <= SEC_ADMINISTRATOR)
             //  return 0;
 
-            if (auto* const bg = killer->GetBattleGround()) {
+            // if (auto* const bg = killer->GetBattleGround())  // NOTE(TsAah): uncomment for optimization
                 killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DAMAGE_DONE, damage, 0, pVictim); // pussywizard: InBattleground() optimization
-            }
-            //killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_DEALT, damage); // pussywizard: optimization
+
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
+            killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_DEALT, damage); // pussywizard: optimization
+#endif
         }
     }
 
-    //if (pVictim->GetTypeId() == TYPEID_PLAYER)
-    //    pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_RECEIVED, damage); // pussywizard: optimization
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
 
+    //if (pVictim->GetTypeId() == TYPEID_PLAYER)
+       pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_RECEIVED, damage); // pussywizard: optimization
+
+#endif
 #endif
 
     if (health <= damage)
@@ -805,11 +810,12 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
                 return 0;
 
 #ifdef USE_ACHIEVEMENTS
-        // TODO(TsAah): decide on config options for optimization or non-player victims
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
 
-        //if (pVictim->GetTypeId() == TYPEID_PLAYER && pVictim != this)
-        //    pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, health); // pussywizard: optimization
+        //if (pVictim->GetTypeId() == TYPEID_PLAYER && pVictim != this)  // NOTE(TsAah): uncomment for optimization
+            pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, health); // pussywizard: optimization
 
+#endif
 #endif
 
         DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamage: victim just died");
@@ -833,11 +839,11 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
         pVictim->ModifyHealth(- (int32)damage);
 
 #ifdef USE_ACHIEVEMENTS
-        // TODO(TsAah): decide on config options for optimization or non-player victims
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
 
-        //if (pVictim->GetTypeId() == TYPEID_PLAYER)
-        //    pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, damage); // pussywizard: optimization
-
+        // if (pVictim->GetTypeId() == TYPEID_PLAYER) // NOTE(TsAah): uncomment for optimization
+            pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, damage); // pussywizard: optimization
+#endif
 #endif
 
         if (damagetype != DOT)
@@ -3926,7 +3932,7 @@ void Unit::RemoveSpellAuraHolder(SpellAuraHolder* holder, AuraRemoveMode mode)
     }
     if (!foundInMap)
         sLog.outInfo("[Crash/Auras] Removing aura holder *not* in holders map ! Aura %u on %s", holder->GetId(), GetName());
-    
+
     holder->SetRemoveMode(mode);
     holder->UnregisterSingleCastHolder();
     holder->HandleCastOnAuraRemoval();
@@ -4958,7 +4964,7 @@ Team Unit::GetTeam() const
                 return ALLIANCE;
         }
     }
-    
+
     return TEAM_NONE;
 }
 
@@ -8506,7 +8512,7 @@ void Unit::HandlePetCommand(CommandStates command, Unit* pTarget)
             else                                    // charmed
                 pCharmer->Uncharm();
             break;
-        }  
+        }
         default:
             sLog.outError("Unit::HandlePetCommand - Unknown command state %u.", uint32(command));
     }
@@ -9861,7 +9867,7 @@ void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptPositiveSpe
         if (!killDelayed)
             continue;
 
-        // Interruption of spells which are no longer referenced, but for which there is still an event (not yet hit the target for example) 
+        // Interruption of spells which are no longer referenced, but for which there is still an event (not yet hit the target for example)
         auto i_Events = iter->m_Events.GetEvents().begin();
         for (; i_Events != iter->m_Events.GetEvents().end(); ++i_Events)
             if (SpellEvent* event = dynamic_cast<SpellEvent*>(i_Events->second))
@@ -9947,7 +9953,7 @@ bool Unit::GetRandomAttackPoint(Unit const* attacker, float &x, float &y, float 
         pow(initialPosZ - attacker->GetPositionZ(), 2));
     if (dist > attackerTargetDistance)
     {
-        // We're not moving, we're already within range. 
+        // We're not moving, we're already within range.
         attacker->GetPosition(x, y, z);
         return true;
     }
