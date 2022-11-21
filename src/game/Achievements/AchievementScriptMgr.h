@@ -2018,7 +2018,7 @@ public:
         //             else
         //             {
         //                 // If the script is already assigned -> delete it!
-        //                 sLog.outError("scripts, Script named '%s' is already assigned (two or more scripts have the same name), so the script can't work, aborting...",
+        //                 sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "scripts, Script named '%s' is already assigned (two or more scripts have the same name), so the script can't work, aborting...",
         //                                script->GetName().c_str());
 
         //                 ABORT(); // Error that should be fixed ASAP.
@@ -2028,7 +2028,7 @@ public:
         //         {
         //             // The script uses a script name from database, but isn't assigned to anything.
         //             if (script->GetName().find("Smart") == std::string::npos)
-        //                 sLog.outError("sql.sql, Script named '%s' is not assigned in the database.",
+        //                 sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "sql.sql, Script named '%s' is not assigned in the database.",
         //                                  script->GetName().c_str());
         //         }
         //     }
@@ -2062,7 +2062,7 @@ private:
         {
             if (it->second == script)
             {
-                sLog.outError("scripts, Script '%s' has same memory pointer as '%s'.",
+                sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "scripts, Script '%s' has same memory pointer as '%s'.",
                                script->GetName().c_str(), it->second->GetName().c_str());
 
                 return false;

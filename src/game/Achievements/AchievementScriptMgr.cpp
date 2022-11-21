@@ -93,8 +93,8 @@ AchievementScriptMgr* AchievementScriptMgr::instance()
 
 void AchievementScriptMgr::Initialize()
 {
-    sLog.outInfo("server.loading, > Loading C++ scripts");
-    sLog.outInfo("server.loading,  ");
+    sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "server.loading, > Loading C++ scripts");
+    sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "server.loading,  ");
 
     loadScriptNames();
 
@@ -185,8 +185,8 @@ void AchievementScriptMgr::LoadDatabase()
 
     CheckIfScriptsInDatabaseExist();
 
-    sLog.outInfo("server.loading, >> Loaded %u C++ scripts in %u ms", GetScriptCount(), WorldTimer::getMSTimeDiffToNow(oldMSTime));
-    sLog.outInfo("server.loading, ");
+    sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "server.loading, >> Loaded %u C++ scripts in %u ms", GetScriptCount(), WorldTimer::getMSTimeDiffToNow(oldMSTime));
+    sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "server.loading, ");
 }
 
 void AchievementScriptMgr::loadScriptNames() {
@@ -286,7 +286,7 @@ void AchievementScriptMgr::CheckIfScriptsInDatabaseExist()
                 // !ScriptRegistry<GroupScript>::GetScriptById(sid)
                 )
                 {
-                    sLog.outInfo("sql.sql, Script named '%s' is assigned in the database, but has no code!", scriptName.c_str());
+                    sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "sql.sql, Script named '%s' is assigned in the database, but has no code!", scriptName.c_str());
                 }
         }
     }
