@@ -3227,12 +3227,11 @@ void Spell::EffectDispel(SpellEffectIndex effIdx)
         {
             int32 count = successList.size();
             WorldPacket data(SMSG_SPELLDISPELLOG, 8 + 8 + 4 + count * 4);
-#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
+#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_12_1
             data << unitTarget->GetPackGUID();              // Victim GUID
             data << m_caster->GetPackGUID();                // Caster GUID
 #else
             data << unitTarget->GetGUID();              // Victim GUID
-            data << m_caster->GetGUID();                // Caster GUID
 #endif
             data << uint32(count);
             for (const auto& j : successList)
@@ -3383,7 +3382,7 @@ void Spell::EffectSummonWild(SpellEffectIndex effIdx)
 
     float radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[effIdx]));
     int32 duration = m_spellInfo->GetDuration();
-    TempSummonType summonType = (duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_COMBAT_OR_DEAD_DESPAWN;
+    TempSummonType summonType = (duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_DEATH_AND_DEAD_DESPAWN;
 
     int32 amount = damage > 0 ? damage : 1;
 
@@ -3675,7 +3674,7 @@ void Spell::EffectSummonPossessed(SpellEffectIndex effIdx)
 
     uint32 creatureEntry = m_spellInfo->EffectMiscValue[effIdx];
 
-    Creature* pMinion = pCaster->SummonPossessedMinion(creatureEntry, m_spellInfo->Id, m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_caster->GetOrientation());
+    Creature* pMinion = pCaster->SummonPossessedMinion(creatureEntry, m_spellInfo->Id, m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_caster->GetOrientation(), m_spellInfo->GetDuration());
     if (!pMinion)
     {
         sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Spell::EffectSummonPossessed: creature entry %u for spell %u could not be summoned.", creatureEntry, m_spellInfo->Id);
@@ -3932,7 +3931,7 @@ void Spell::EffectSummonPet(SpellEffectIndex effIdx)
 
 ObjectGuid Unit::EffectSummonPet(uint32 spellId, uint32 petEntry, uint32 petLevel)
 {
-    if (!UnsummonOldPetBeforeNewSummon(petEntry))
+    if (!UnsummonOldPetBeforeNewSummon(petEntry, true))
         return ObjectGuid();
 
     CreatureInfo const* cInfo = petEntry ? sCreatureStorage.LookupEntry<CreatureInfo>(petEntry) : nullptr;
@@ -5408,7 +5407,7 @@ void Spell::EffectSanctuary(SpellEffectIndex effIdx)
     unitTarget->CombatStop();
 
     // Flask of Petrification does not cause mobs to stop attacking.
-    if (!m_spellInfo->HasAttribute(SPELL_ATTR_EX2_FOOD_BUFF))
+    if (!m_spellInfo->HasAttribute(SPELL_ATTR_EX2_RETAIN_ITEM_CAST))
     {
         HostileReference* pReference = unitTarget->GetHostileRefManager().getFirst();
         while (pReference)

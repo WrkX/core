@@ -581,6 +581,7 @@ class ChatHandler
 
         bool HandleListAurasCommand(char* args);
         bool HandleListCreatureCommand(char* args);
+        bool HandleListExploredAreasCommand(char* args);
         bool HandleListItemCommand(char* args);
         bool HandleListObjectCommand(char* args);
         bool HandleListTalentsCommand(char* args);
@@ -713,6 +714,7 @@ class ChatHandler
         bool HandleUnitSpeedInfoCommand(char* args);
         bool HandleUnitStatInfoCommand(char* args);
         bool HandleUnitUpdateFieldsInfoCommand(char* args);
+        bool HandleUnitShowStateCommand(char* args);
 
         bool HandlePDumpLoadCommand(char* args);
         bool HandlePDumpWriteCommand(char* args);
