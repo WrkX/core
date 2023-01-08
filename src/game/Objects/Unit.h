@@ -166,6 +166,13 @@ struct SpellPeriodicAuraLogInfo
 
 uint32 CreateProcExtendMask(SpellNonMeleeDamage* damageInfo, SpellMissInfo missCondition);
 
+enum SpellProcEventTriggerCheck
+{
+    SPELL_PROC_TRIGGER_FAILED       = 0,
+    SPELL_PROC_TRIGGER_ROLL_FAILED  = 1,
+    SPELL_PROC_TRIGGER_OK           = 2,
+};
+
 enum SpellAuraProcResult
 {
     SPELL_AURA_PROC_OK              = 0,                    // proc was processed, will remove charges
@@ -739,7 +746,7 @@ class Unit : public SpellCaster
         void RemoveSpellsCausingAuraWithMechanic(AuraType auraType);
         void RemoveNonPassiveSpellsCausingAura(AuraType auraType);
         bool RemoveNoStackAurasDueToAuraHolder(SpellAuraHolder* holder);
-        void RemoveAurasWithInterruptFlags(uint32 flags, uint32 except = 0, bool checkProcFlags = false, bool skipStealth = false);
+        void RemoveAurasWithInterruptFlags(uint32 flags, uint32 except = 0, bool checkProcFlags = false, bool skipStealth = false, bool skipInvisibility = false);
         void RemoveAurasWithAttribute(uint32 flags);
         void RemoveAurasWithDispelType(DispelType type, ObjectGuid casterGuid = ObjectGuid());
         void RemoveAllAuras(AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
@@ -851,7 +858,7 @@ class Unit : public SpellCaster
         void ProcSkillsAndReactives(bool isVictim, Unit* pTarget, uint32 procFlag, uint32 procExtra, WeaponAttackType attType);
         void HandleTriggers(Unit* pVictim, uint32 procExtra, uint32 amount, SpellEntry const* procSpell, ProcTriggeredList const& procTriggered);
 
-        bool IsTriggeredAtSpellProcEvent(Unit* pVictim, SpellAuraHolder* holder, SpellEntry const* procSpell, uint32 procFlag, uint32 procExtra, WeaponAttackType attType, bool isVictim, SpellProcEventEntry const*& spellProcEvent, bool isSpellTriggeredByAura) const;
+        SpellProcEventTriggerCheck IsTriggeredAtSpellProcEvent(Unit* pVictim, SpellAuraHolder* holder, SpellEntry const* procSpell, uint32 procFlag, uint32 procExtra, WeaponAttackType attType, bool isVictim, SpellProcEventEntry const*& spellProcEvent, bool isSpellTriggeredByAura) const;
         // only to be used in proc handlers - basepoints is expected to be a MAX_EFFECT_INDEX sized array
         SpellAuraProcResult TriggerProccedSpell(Unit* target, int32* basepoints, uint32 triggeredSpellId, Item* castItem, Aura* triggeredByAura, uint32 cooldown, ObjectGuid originalCaster = ObjectGuid(), SpellEntry const* triggeredByParent = nullptr);
         SpellAuraProcResult TriggerProccedSpell(Unit* target, int32* basepoints, SpellEntry const* spellInfo, Item* castItem, Aura* triggeredByAura, uint32 cooldown, ObjectGuid originalCaster = ObjectGuid(), SpellEntry const* triggeredByParent = nullptr);
@@ -1167,7 +1174,7 @@ class Unit : public SpellCaster
         ObjectGuid m_possessorGuid; // Guid of unit possessing this one
     public:
         uint32 GetFactionTemplateId() const final { return GetUInt32Value(UNIT_FIELD_FACTIONTEMPLATE); }
-        void SetFactionTemplateId(uint32 faction) { SetUInt32Value(UNIT_FIELD_FACTIONTEMPLATE, faction); }
+        void SetFactionTemplateId(uint32 faction);
         void RestoreFaction();
         virtual Team GetTeam() const;
 
@@ -1207,7 +1214,7 @@ class Unit : public SpellCaster
         Pet* GetPet() const;
         void SetPet(Pet* pet);
         virtual Pet* GetMiniPet() const { return nullptr; }    // overwritten in Player
-        bool UnsummonOldPetBeforeNewSummon(uint32 newPetEntry);
+        bool UnsummonOldPetBeforeNewSummon(uint32 newPetEntry, bool canUnsummon);
 
         // Pet responses methods
         void SendPetCastFail(uint32 spellid, SpellCastResult msg);
@@ -1243,6 +1250,7 @@ class Unit : public SpellCaster
             return GetObjectGuid();
         }
         Player* GetCharmerOrOwnerPlayerOrPlayerItself() const;
+        Player* GetCharmerOrOwnerPlayer() const;
         Unit* GetCharmerOrOwner() const { return GetCharmerGuid() ? GetCharmer() : GetOwner(); }
         Unit* GetCharmerOrOwnerOrSelf()
         {

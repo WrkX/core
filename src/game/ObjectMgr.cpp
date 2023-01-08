@@ -1475,6 +1475,18 @@ void ObjectMgr::CheckCreatureTemplates()
             }
         }
 
+        if (cInfo->flags_extra & CREATURE_FLAG_EXTRA_DESPAWN_INSTANTLY)
+        {
+            if (cInfo->gold_min || cInfo->gold_max)
+                sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Creature (Entry: %u) with despawn instantly flag has gold loot assigned. It will never be lootable.", cInfo->entry);
+
+            if (cInfo->loot_id)
+                sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Creature (Entry: %u) with despawn instantly flag has corpse loot assigned. It will never be lootable.", cInfo->entry);
+
+            if (cInfo->skinning_loot_id)
+                sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Creature (Entry: %u) with despawn instantly flag has skinning loot assigned. It will never be lootable.", cInfo->entry);
+        }
+
         ConvertCreatureAurasField<CreatureInfo>(const_cast<CreatureInfo*>(cInfo), "creature_template", "Entry", cInfo->entry);
     }
 }
@@ -10547,22 +10559,6 @@ bool ObjectMgr::IsVendorItemValid(bool isTemplate, char const* tableName, uint32
                 ChatHandler(pl).SendSysMessage(LANG_COMMAND_VENDORSELECTION);
             else if (!IsExistingCreatureId(vendor_entry))
                 sLog.Out(LOG_DBERROR, LOG_LVL_ERROR, "Table `%s` has data for nonexistent creature (Entry: %u), ignoring", tableName, vendor_entry);
-            return false;
-        }
-
-        // innkeepers become vendors during love is in the air even if they are not normally
-        if (!(cInfo->npc_flags & (UNIT_NPC_FLAG_VENDOR | UNIT_NPC_FLAG_INNKEEPER)))
-        {
-            if (!skip_vendors || skip_vendors->count(vendor_entry) == 0)
-            {
-                if (pl)
-                    ChatHandler(pl).SendSysMessage(LANG_COMMAND_VENDORSELECTION);
-                else
-                    sLog.Out(LOG_DBERROR, LOG_LVL_ERROR, "Table `%s` has data for creature (Entry: %u) without vendor flag, ignoring", tableName, vendor_entry);
-
-                if (skip_vendors)
-                    skip_vendors->insert(vendor_entry);
-            }
             return false;
         }
     }

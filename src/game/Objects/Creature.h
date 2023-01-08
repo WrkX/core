@@ -342,8 +342,8 @@ class Creature : public Unit
         void RemoveCorpse();
         bool IsDeadByDefault() const;
 
-        void ForcedDespawn(uint32 timeMSToDespawn = 0);
-        void DespawnOrUnsummon(uint32 msTimeToDespawn = 0);
+        void ForcedDespawn(uint32 msTimeToDespawn = 0, uint32 secsTimeToRespawn = 0);
+        void DespawnOrUnsummon(uint32 msTimeToDespawn = 0, uint32 secsTimeToRespawn = 0);
 
         time_t const& GetRespawnTime() const { return m_respawnTime; }
         time_t GetRespawnTimeEx() const;
@@ -475,6 +475,13 @@ class Creature : public Unit
         void GetSummonPoint(float &fX, float &fY, float &fZ, float &fOrient) const { fX = m_summonPos.x; fY = m_summonPos.y; fZ = m_summonPos.z; fOrient = m_summonPos.o; }
 
         void SetNoXP() { AddUnitState(UNIT_STAT_NO_KILL_REWARD); }
+        void EnableMoveInLosEvent()
+        {
+            if (HasUnitState(UNIT_STAT_NO_SEARCH_FOR_OTHERS))
+                ClearUnitState(UNIT_STAT_NO_SEARCH_FOR_OTHERS);
+            if (!HasUnitState(UNIT_STAT_AI_USES_MOVE_IN_LOS))
+                AddUnitState(UNIT_STAT_AI_USES_MOVE_IN_LOS);
+        }
 
         void SetFactionTemporary(uint32 factionId, uint32 tempFactionFlags = TEMPFACTION_ALL);
         void ClearTemporaryFaction();
@@ -500,7 +507,7 @@ class Creature : public Unit
         void SetTempPacified(uint32 timer)  { if (m_pacifiedTimer < timer) m_pacifiedTimer = timer; }
         uint32 GetTempPacifiedTimer() const { return m_pacifiedTimer; }
         uint32 m_pacifiedTimer;
-        uint32 m_manaRegen;
+        float m_manaRegen;
 
         void RegenerateHealth();
         void RegenerateMana();
@@ -674,11 +681,12 @@ class AssistDelayEvent : public BasicEvent
 class ForcedDespawnDelayEvent : public BasicEvent
 {
     public:
-        explicit ForcedDespawnDelayEvent(Creature& owner) : BasicEvent(), m_owner(owner) { }
+        explicit ForcedDespawnDelayEvent(Creature& owner, uint32 secsTimeToRespawn = 0) : BasicEvent(), m_owner(owner), m_secsTimeToRespawn(secsTimeToRespawn) { }
         bool Execute(uint64 e_time, uint32 p_time) override;
 
     private:
         Creature& m_owner;
+        uint32 m_secsTimeToRespawn;
 };
 
 class TargetedEmoteEvent : public BasicEvent

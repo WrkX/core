@@ -1298,12 +1298,13 @@ GuidReserveSize.GameObject = 1000
 #        Chat protection from creating fake messages using a lot spaces (other invisible symbols),
 #        not applied to addon language messages, but can prevent old addons from working
 #        if they use normal languages for sending data to other clients.
-#        Default: 0 (disable fake messages preventing)
-#                 1 (enable fake messages preventing)
+#        Default: 1 (enable fake messages preventing)
+#                 0 (disable fake messages preventing)
 #
 #    ChatStrictLinkChecking.Severity
 #        Check chat messages for ingame links to spells, items, quests, achievements etc.
-#        Default: 0 (disable link checking)
+#        Default: 2
+#                 0 (disable link checking)
 #                 1 (check if only valid pipe commands are used. This prevents posting pictures for example)
 #                 2 (verifiy that pipe commands are used in a correct order)
 #                 3 (check if color, entry and name don't contradict each other. For correct work, please assure
@@ -1387,8 +1388,8 @@ GuidReserveSize.GameObject = 1000
 #
 ###################################################################################################################
 
-ChatFakeMessagePreventing = 0
-ChatStrictLinkChecking.Severity = 0
+ChatFakeMessagePreventing = 1
+ChatStrictLinkChecking.Severity = 2
 ChatStrictLinkChecking.Kick = 0
 ChatFlood.MessageCount = 10
 ChatFlood.MessageDelay = 1
@@ -1734,6 +1735,19 @@ Warden.ModuleDir             = "warden_modules"
 #        Description: Action to take upon failing this check.
 #        Default:     11 - Log, Report to GM, Kick
 #
+#    Anticheat.BadFallReset.Enable
+#        Description: Check for wrong data in fall reset opcode.
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+#
+#    Anticheat.BadFallReset.Threshold
+#        Description: Detections needed to trigger a penalty.
+#        Default:     1
+#
+#    Anticheat.BadFallReset.Penalty
+#        Description: Action to take upon failing this check.
+#        Default:     11 - Log, Report to GM, Kick
+#
 #    Anticheat.Teleport.Enable
 #        Description: Check for players teleporting far away from their current position.
 #        Default:     1 - (Enabled)
@@ -2030,6 +2044,9 @@ Anticheat.NoFallTime.Enable = 1
 Anticheat.NoFallTime.Reject = 1
 Anticheat.NoFallTime.Threshold = 5
 Anticheat.NoFallTime.Penalty = 11
+Anticheat.BadFallReset.Enable = 1
+Anticheat.BadFallReset.Threshold = 1
+Anticheat.BadFallReset.Penalty = 11
 Anticheat.Teleport.Enable = 1
 Anticheat.Teleport.Reject = 1
 Anticheat.Teleport.Distance = 40.0

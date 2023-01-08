@@ -1874,7 +1874,7 @@ void Unit::CalculateDamageAbsorbAndResist(SpellCaster* pCaster, SpellSchoolMask 
         schoolMask = spell->m_spellSchoolMask;
 
     // Nostalrius : immune ?
-    if (IsImmuneToSchoolMask(schoolMask) && !(spellProto && (spellProto->Attributes & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY)))
+    if (IsImmuneToSchoolMask(schoolMask) && !(spellProto && (spellProto->Attributes & SPELL_ATTR_NO_IMMUNITIES)))
     {
         (*absorb) = damage;
         return;
@@ -2447,7 +2447,7 @@ bool Unit::IsSpellBlocked(SpellCaster* pCaster, Unit* pVictim, SpellEntry const*
     if (spellEntry)
     {
         // Some spells cannot be blocked
-        if (spellEntry->Attributes & SPELL_ATTR_IMPOSSIBLE_DODGE_PARRY_BLOCK)
+        if (spellEntry->Attributes & SPELL_ATTR_NO_ACTIVE_DEFENSE)
             return false;
     }
 
@@ -3827,12 +3827,13 @@ void Unit::RemoveAurasDueToItemSpell(Item* castItem, uint32 spellId)
     }
 }
 
-void Unit::RemoveAurasWithInterruptFlags(uint32 flags, uint32 except, bool checkProcFlags, bool skipStealth)
+void Unit::RemoveAurasWithInterruptFlags(uint32 flags, uint32 except, bool checkProcFlags, bool skipStealth, bool skipInvisibility)
 {
     for (SpellAuraHolderMap::iterator iter = m_spellAuraHolders.begin(); iter != m_spellAuraHolders.end();)
     {
         if ((!checkProcFlags || !iter->second->GetSpellProto()->procFlags) &&
-            (!skipStealth || !iter->second->HasAuraType(SPELL_AURA_MOD_STEALTH)) &&
+            (!skipStealth || iter->second->GetSpellProto()->Dispel != DISPEL_STEALTH) &&
+            (!skipInvisibility || iter->second->GetSpellProto()->Dispel != DISPEL_INVISIBILITY) &&
             (iter->second->GetSpellProto()->AuraInterruptFlags & flags) &&
             (iter->second->GetSpellProto()->Id != except))
         {
@@ -4871,6 +4872,15 @@ Player* Unit::GetCharmerOrOwnerPlayerOrPlayerItself() const
     return IsPlayer() ? (Player*)this : nullptr;
 }
 
+Player* Unit::GetCharmerOrOwnerPlayer() const
+{
+    ObjectGuid guid = GetCharmerOrOwnerGuid();
+    if (guid.IsPlayer())
+        return ObjectAccessor::FindPlayer(guid);
+
+    return nullptr;
+}
+
 Player* Unit::GetAffectingPlayer() const
 {
     if (!GetCharmerOrOwnerGuid())
@@ -4944,6 +4954,35 @@ void Unit::SetCharm(Unit* pet)
     SetCharmGuid(pet ? pet->GetObjectGuid() : ObjectGuid());
 }
 
+void Unit::SetFactionTemplateId(uint32 faction)
+{
+    SetUInt32Value(UNIT_FIELD_FACTIONTEMPLATE, faction);
+
+    if (FactionTemplateEntry const* pFaction = sObjectMgr.GetFactionTemplateEntry(faction))
+    {
+        if (pFaction->hostileMask ||
+            pFaction->HasFactionFlag(FACTION_TEMPLATE_BROADCAST_TO_ENEMIES_LOW_PRIO |
+                                     FACTION_TEMPLATE_BROADCAST_TO_ENEMIES_MED_PRIO |
+                                     FACTION_TEMPLATE_BROADCAST_TO_ENEMIES_HIG_PRIO))
+            ClearUnitState(UNIT_STAT_NO_BROADCAST_TO_OTHERS);
+        else
+            AddUnitState(UNIT_STAT_NO_BROADCAST_TO_OTHERS);
+
+        if (!HasUnitState(UNIT_STAT_AI_USES_MOVE_IN_LOS))
+        {
+            if (pFaction->hostileMask ||
+                pFaction->HasFactionFlag(FACTION_TEMPLATE_SEARCH_FOR_ENEMIES_LOW_PRIO |
+                    FACTION_TEMPLATE_SEARCH_FOR_ENEMIES_MED_PRIO |
+                    FACTION_TEMPLATE_SEARCH_FOR_ENEMIES_HIG_PRIO |
+                    FACTION_TEMPLATE_SEARCH_FOR_FRIENDS_LOW_PRIO |
+                    FACTION_TEMPLATE_SEARCH_FOR_FRIENDS_MED_PRIO |
+                    FACTION_TEMPLATE_SEARCH_FOR_FRIENDS_HIG_PRIO))
+                ClearUnitState(UNIT_STAT_NO_SEARCH_FOR_OTHERS);
+            else
+                AddUnitState(UNIT_STAT_NO_SEARCH_FOR_OTHERS);
+        }
+    }
+}
 
 void Unit::RestoreFaction()
 {
@@ -5112,13 +5151,16 @@ void Unit::UnsummonAllTotems()
             totem->UnSummon();
 }
 
-bool Unit::UnsummonOldPetBeforeNewSummon(uint32 newPetEntry)
+bool Unit::UnsummonOldPetBeforeNewSummon(uint32 newPetEntry, bool canUnsummon)
 {
     Pet* OldSummon = GetPet();
 
     // if pet requested type already exist
     if (OldSummon)
     {
+        if (!canUnsummon)
+            return false;
+
         if (OldSummon->IsDead() && (newPetEntry == 0 || OldSummon->GetEntry() == newPetEntry))
         {
             if (newPetEntry) // warlock pet
@@ -5127,7 +5169,12 @@ bool Unit::UnsummonOldPetBeforeNewSummon(uint32 newPetEntry)
                 return false; // pet in corpse state can't be unsummoned
         }
         else if (IsPlayer())
-            OldSummon->Unsummon(OldSummon->getPetType() == HUNTER_PET ? PET_SAVE_AS_DELETED : PET_SAVE_NOT_IN_SLOT, this);
+        {
+            if (newPetEntry)
+                OldSummon->Unsummon(OldSummon->getPetType() == HUNTER_PET ? PET_SAVE_AS_DELETED : PET_SAVE_NOT_IN_SLOT, this);
+            else
+                return false;
+        }
         else
             return false;
     }
@@ -5379,7 +5426,7 @@ int32 Unit::SpellBaseHealingBonusTaken(SpellSchoolMask schoolMask) const
 
 bool Unit::IsImmuneToDamage(SpellSchoolMask shoolMask, SpellEntry const* spellInfo) const
 {
-    if (spellInfo && spellInfo->HasAttribute(SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY))
+    if (spellInfo && spellInfo->HasAttribute(SPELL_ATTR_NO_IMMUNITIES))
         return false;
 
     // If m_immuneToDamage type contain magic, IMMUNE damage.
@@ -5390,19 +5437,22 @@ bool Unit::IsImmuneToDamage(SpellSchoolMask shoolMask, SpellEntry const* spellIn
             return true;
     }
 
-    // If m_immuneToSchool type contain this school type, IMMUNE damage.
-    SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
-    for (const auto& itr : schoolList)
+    if (!spellInfo || !spellInfo->HasAttribute(SPELL_ATTR_EX2_NO_SCHOOL_IMMUNITIES))
     {
-        if (itr.type & shoolMask)
+        // If m_immuneToSchool type contain this school type, IMMUNE damage.
+        SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
+        for (const auto& itr : schoolList)
         {
-            SpellEntry const* pImmunitySpell = sSpellMgr.GetSpellEntry(itr.spellId);
+            if (itr.type & shoolMask)
+            {
+                SpellEntry const* pImmunitySpell = sSpellMgr.GetSpellEntry(itr.spellId);
 
-            if ((pImmunitySpell && pImmunitySpell->IsPositiveSpell()) != (spellInfo && spellInfo->IsPositiveSpell()))
-                return true;
-            
-            if (pImmunitySpell && pImmunitySpell->HasAttribute(SPELL_ATTR_EX_IMMUNITY_TO_HOSTILE_AND_FRIENDLY_EFFECTS))
-                return true;
+                if ((pImmunitySpell && pImmunitySpell->IsPositiveSpell()) != (spellInfo && spellInfo->IsPositiveSpell()))
+                    return true;
+
+                if (pImmunitySpell && pImmunitySpell->HasAttribute(SPELL_ATTR_EX_IMMUNITY_TO_HOSTILE_AND_FRIENDLY_EFFECTS))
+                    return true;
+            }
         }
     }
 
@@ -5432,8 +5482,9 @@ bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo, bool /*castOnSelf*/) con
         }
     }
 
-    if (!(spellInfo->Attributes & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY)            // ignore invulnerability
-     && !(spellInfo->AttributesEx & SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY))           // can remove immune (by dispell or immune it)
+    if (!(spellInfo->Attributes & SPELL_ATTR_NO_IMMUNITIES)               // ignore invulnerability
+     && !(spellInfo->AttributesEx & SPELL_ATTR_EX_IMMUNITY_PURGES_EFFECT) // can remove immune (by dispell or immune it)
+     && !(spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NO_SCHOOL_IMMUNITIES))
     {
         SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
         for (const auto& itr : schoolList)
@@ -5569,7 +5620,8 @@ bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex i
 
 bool Unit::IsImmuneToSchool(SpellEntry const* spellInfo, uint8 effectMask) const
 {
-    if (!spellInfo->HasAttribute(SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY))           // can remove immune (by dispell or immune it)
+    if (!spellInfo->HasAttribute(SPELL_ATTR_EX_IMMUNITY_PURGES_EFFECT)            // can remove immune (by dispell or immune it)
+     && !spellInfo->HasAttribute(SPELL_ATTR_EX2_NO_SCHOOL_IMMUNITIES))
     {
         SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
         for (auto itr : schoolList)
@@ -5707,7 +5759,7 @@ void Unit::ApplySpellDispelImmunity(SpellEntry const* spellProto, DispelType typ
 {
     ApplySpellImmune(spellProto->Id, IMMUNITY_DISPEL, type, apply);
 
-    if (apply && spellProto->AttributesEx & SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY)
+    if (apply && spellProto->HasAttribute(SPELL_ATTR_EX_IMMUNITY_PURGES_EFFECT))
         RemoveAurasWithDispelType(type);
 }
 
@@ -5916,6 +5968,9 @@ void Unit::SetInCombatWithAggressor(Unit* pAggressor, bool touchOnly/* = false*/
         SetInCombatWith(pAggressor);
         if (Creature* pCreature = ToCreature())
             pCreature->UpdateLeashExtensionTime();
+
+        if (Player* pOwner = ::ToPlayer(GetCharmerOrOwner()))
+            pOwner->SetInCombatWithAggressor(pAggressor, false);
     }
 }
 
@@ -6000,7 +6055,10 @@ void Unit::ClearInCombat()
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
 
     if (IsPlayer())
+    {
         static_cast<Player*>(this)->pvpInfo.inPvPCombat = false;
+        static_cast<Player*>(this)->ClearTemporaryWarWithFactions();
+    }
 }
 
 bool Unit::IsTargetableBy(WorldObject const* pAttacker, bool forAoE, bool checkAlive) const
@@ -8678,6 +8736,11 @@ void Unit::ProcDamageAndSpellFor(bool isVictim, Unit* pTarget, uint32 procFlag, 
         if (itr.second->IsDeleted())
             continue;
 
+        // don't reroll chance for each target in this case
+        if (itr.second->GetSpellProto()->HasAttribute(SPELL_ATTR_EX2_PROC_COOLDOWN_ON_FAILURE) &&
+           !IsSpellReady(itr.second->GetId()))
+            continue;
+
         // Aura that applies a modifier with charges. Gere? otherwise.
         bool hasmodifier = false;
         for (int i = 0; i < 3; ++i)
@@ -8698,8 +8761,16 @@ void Unit::ProcDamageAndSpellFor(bool isVictim, Unit* pTarget, uint32 procFlag, 
             continue;
 
         SpellProcEventEntry const* spellProcEvent = nullptr;
-        if (!IsTriggeredAtSpellProcEvent(pTarget, itr.second, procSpell, procFlag, procExtra, attType, isVictim, spellProcEvent, isSpellTriggeredByAura))
+        auto result = IsTriggeredAtSpellProcEvent(pTarget, itr.second, procSpell, procFlag, procExtra, attType, isVictim, spellProcEvent, isSpellTriggeredByAura);
+        if (result != SPELL_PROC_TRIGGER_OK)
+        {
+            if (result == SPELL_PROC_TRIGGER_ROLL_FAILED &&
+                itr.second->GetSpellProto()->HasAttribute(SPELL_ATTR_EX2_PROC_COOLDOWN_ON_FAILURE) &&
+                spellProcEvent && spellProcEvent->cooldown)
+                AddCooldown(*itr.second->GetSpellProto(), nullptr, false, spellProcEvent->cooldown);
+
             continue;
+        }
 
         itr.second->SetInUse(true);                        // prevent holder deletion
         triggeredList.push_back(ProcTriggeredData(spellProcEvent, itr.second, pTarget, procFlag));
@@ -9469,7 +9540,7 @@ void Unit::RemoveAurasAtMechanicImmunity(uint32 mechMask, uint32 exceptSpellId, 
             ++iter;
         else if (non_positive && iter->second->IsPositive())
             ++iter;
-        else if (spell->Attributes & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY)
+        else if (spell->Attributes & SPELL_ATTR_NO_IMMUNITIES)
             ++iter;
         else if (iter->second->HasMechanicMask(mechMask))
         {
@@ -9499,8 +9570,9 @@ void Unit::NearTeleportTo(float x, float y, float z, float orientation, uint32 t
             if (MovementGenerator* movgen = c->GetMotionMaster()->top())
                 movgen->Interrupt(*c);
 
+        MovementPacketSender::SendTeleportToObservers(this, x, y, z, orientation);
         GetMap()->CreatureRelocation((Creature*)this, x, y, z, orientation);
-        SendHeartBeat();
+        MovementPacketSender::SendTeleportToObservers(this, x, y, z, orientation);
 
         // finished relocation, movegen can different from top before creature relocation,
         // but apply Reset expected to be safe in any case
@@ -9797,6 +9869,9 @@ private:
 
 void Unit::ScheduleAINotify(uint32 delay)
 {
+    if (HasUnitState(UNIT_STAT_NO_BROADCAST_TO_OTHERS))
+        return;
+
     if (!delay)
     {
         // Instant
@@ -9961,19 +10036,20 @@ bool Unit::GetRandomAttackPoint(Unit const* attacker, float &x, float &y, float 
     y = initialPosY + dist * sin(angle) * normalizedVectXY;
     z = initialPosZ + dist * normalizedVectZ;
 
-    if ((attacker->CanFly() || (attacker->CanSwim() && reachableBySwiming)))
+    if (attacker->CanFly() || (attacker->CanSwim() && reachableBySwiming) || !HasMMapsForCurrentMap())
     {
         GetMap()->GetLosHitPosition(initialPosX, initialPosY, initialPosZ, x, y, z, -0.2f);
-        if (attacker->CanFly())
-            return true;
-        float ground = 0.0f;
-        float waterSurface = GetTerrain()->GetWaterLevel(x, y, z, &ground);
-        if (waterSurface == VMAP_INVALID_HEIGHT_VALUE)
-            waterSurface = GetPositionZ();
-        if (z > waterSurface)
-            z = waterSurface;
-        if (z < ground)
-            z = ground;
+        if (attacker->CanSwim() && reachableBySwiming)
+        {
+            float ground = 0.0f;
+            float waterSurface = GetTerrain()->GetWaterLevel(x, y, z, &ground);
+            if (waterSurface == VMAP_INVALID_HEIGHT_VALUE)
+                waterSurface = GetPositionZ();
+            if (z > waterSurface)
+                z = waterSurface;
+            if (z < ground)
+                z = ground;
+        }
         return true;
     }
     else if (canOnlySwim && !reachableBySwiming)

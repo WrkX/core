@@ -67,7 +67,7 @@ Pet::Pet(PetType type) :
     m_loyaltyPoints(0), m_bonusdamage(0), m_auraUpdateMask(0), m_loading(false), m_pTmpCache(nullptr), m_unSummoned(false), m_enabled(true)
 {
     m_name = "Pet";
-    m_regenTimer = REGEN_TIME_FULL;
+    m_regenTimer = REGEN_TIME_CREATURE_FULL;
 
     // pets always have a charminfo, even if they are not actually charmed
     InitCharmInfo(this);
@@ -404,6 +404,9 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petNumber, bool c
 
     if (owner->GetTypeId() == TYPEID_PLAYER)
     {
+        if (owner->IsMounted())
+            m_enabled = false;
+
         ((Player*)owner)->PetSpellInitialize();
         if (((Player*)owner)->GetGroup())
             ((Player*)owner)->SetGroupUpdateFlag(GROUP_UPDATE_PET);
@@ -736,7 +739,7 @@ void Pet::RegenerateAll(uint32 update_diff, bool skipCombatCheck)
 
         RegenerateMana();
 
-        m_regenTimer = REGEN_TIME_FULL;
+        m_regenTimer = REGEN_TIME_CREATURE_FULL;
     }
     else
         m_regenTimer -= update_diff;
@@ -2285,7 +2288,7 @@ bool Pet::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* ci
     SetByteValue(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_MISC_FLAGS, UNIT_BYTE2_FLAG_UNK3 | UNIT_BYTE2_FLAG_AURAS | UNIT_BYTE2_FLAG_UNK5);
 
     if (getPetType() == MINI_PET)                           // always non-attackable
-        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER | UNIT_FLAG_IMMUNE_TO_NPC);
 
     return true;
 }

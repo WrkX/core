@@ -148,6 +148,15 @@ inline float round_float(float value)
     return floor(value);
 }
 
+inline float round_float_chance(float value)
+{
+    float const remainder = value - floor(value);
+    if (remainder && roll_chance_f(remainder * 100.0f))
+        return ceil(value);
+
+    return floor(value);
+}
+
 inline void ApplyModUInt32Var(uint32& var, int32 val, bool apply)
 {
     int32 cur = var;
@@ -422,5 +431,9 @@ inline uint32 BatchifyTimer(uint32 timer, uint32 interval)
         value++;
     return value * interval;
 }
+
+typedef char const*(*ValueToStringFunc) (uint32 value);
+
+std::string FlagsToString(uint32 flags, ValueToStringFunc getNameFunc);
 
 #endif
