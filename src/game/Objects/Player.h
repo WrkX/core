@@ -1014,7 +1014,7 @@ class Player final: public Unit
         void SetPvPDeath(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_PVP_DEATH; else m_ExtraFlags &= ~PLAYER_EXTRA_PVP_DEATH; }
         bool IsGMVisible() const { return !(m_ExtraFlags & PLAYER_EXTRA_GM_INVISIBLE); }
         void SetGMVisible(bool on, bool notify = false);
-        
+
         void SetCheatGod(bool on, bool notify = false);
         bool IsGod() const { return HasCheatOption(PLAYER_CHEAT_GOD); }
         void SetCheatNoCooldown(bool on, bool notify = false);
@@ -1436,7 +1436,7 @@ class Player final: public Unit
         /*********************************************************/
         /***                   SAVE SYSTEM                     ***/
         /*********************************************************/
-        
+
     private:
         void _SaveAuras();
         void _SaveInventory();
@@ -1500,7 +1500,7 @@ class Player final: public Unit
         void UnsummonPetTemporaryIfAny();
         void ResummonPetTemporaryUnSummonedIfAny();
         bool IsPetNeedBeTemporaryUnsummoned() const;
-        
+
         /*********************************************************/
         /***                   SPELL SYSTEM                    ***/
         /*********************************************************/
@@ -1511,7 +1511,7 @@ class Player final: public Unit
         SpellModList m_spellMods[MAX_SPELLMOD];
         uint32 m_lastFromClientCastedSpellID;
         std::map<uint32, ItemSetEffect> m_itemSetEffects;
-        
+
         bool IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) const;
         void SendInitialSpells() const;
         bool AddSpell(uint32 spellId, bool active, bool learning, bool dependent, bool disabled);
@@ -1850,11 +1850,8 @@ class Player final: public Unit
         uint32 m_longSightSpell;
 
         // Homebind coordinates
-        uint32 m_homebindMapId;
+        WorldLocation m_homebind;
         uint16 m_homebindAreaId;
-        float m_homebindX;
-        float m_homebindY;
-        float m_homebindZ;
 
         // knockback/jumping states
         bool launched;
@@ -1942,8 +1939,8 @@ class Player final: public Unit
             o = m_recallO;
         };
 
-        void SetHomebindToLocation(WorldLocation const& loc, uint32 area_id);
-        void RelocateToHomebind() { SetLocationMapId(m_homebindMapId); Relocate(m_homebindX, m_homebindY, m_homebindZ); }
+        void SetHomebindToLocation(WorldLocation const& loc, uint32 areaId);
+        void RelocateToHomebind() { SetLocationMapId(m_homebind.mapId); Relocate(m_homebind.x, m_homebind.y, m_homebind.z); }
         bool TeleportToHomebind(uint32 options = 0, bool hearthCooldown = true);
 
         // currently visible objects at player client
@@ -1999,7 +1996,7 @@ class Player final: public Unit
         Position m_lastSafePosition;
         bool  m_undermapPosValid;
 
-        uint32 GetHomeBindMap() const { return m_homebindMapId; }
+        uint32 GetHomeBindMap() const { return m_homebind.mapId; }
         uint16 GetHomeBindAreaId() const { return m_homebindAreaId; }
 
         void SendSummonRequest(ObjectGuid summonerGuid, uint32 mapId, uint32 zoneId, float x, float y, float z);
@@ -2028,7 +2025,7 @@ class Player final: public Unit
         /***              ENVIRONMENTAL SYSTEM                 ***/
         /*********************************************************/
 
-    protected: 
+    protected:
         uint8 m_environmentFlags = ENVIRONMENT_FLAG_NONE;
         float m_environmentBreathingMultiplier = 1.0f;
         MirrorTimer m_mirrorTimers[MirrorTimer::NUM_TIMERS] = { MirrorTimer::FATIGUE, MirrorTimer::BREATH, MirrorTimer::FEIGNDEATH, MirrorTimer::ENVIRONMENTAL };
@@ -2098,7 +2095,7 @@ class Player final: public Unit
         /*********************************************************/
         /***                    TAXI SYSTEM                    ***/
         /*********************************************************/
-        
+
     private:
         PlayerTaxi m_taxi;
     public:
@@ -2665,7 +2662,7 @@ class Player final: public Unit
         static uint32 GetGuildIdFromDB(ObjectGuid guid);
         static uint32 GetRankFromDB(ObjectGuid guid);
         int GetGuildIdInvited() { return m_GuildIdInvited; }
-        static void RemovePetitionsAndSigns(ObjectGuid guid);
+        static void RemovePetitionsAndSigns(ObjectGuid guid, uint32 exceptPetitionId = 0);
 
 #ifdef USE_ACHIEVEMENTS
 public:
@@ -2690,7 +2687,6 @@ private:
     AchievementMgr* m_achievementMgr;
 
 #endif
-
 };
 
 inline Player* Object::ToPlayer()
@@ -2745,7 +2741,7 @@ template <class T> T Player::ApplySpellMod(uint32 spellId, SpellModOp op, T &bas
 
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_10_2
         // World of Warcraft Client Patch 1.11.0 (2006-06-20)
-        // - Nature's Grace: You will no longer consume this effect when casting a 
+        // - Nature's Grace: You will no longer consume this effect when casting a
         //   spell which was made instant by Nature's Swiftness.
         if (!((mod->op == SPELLMOD_CASTING_TIME) && (mod->type == SPELLMOD_FLAT) && HasInstantCastingSpellMod(spellInfo)))
 #endif

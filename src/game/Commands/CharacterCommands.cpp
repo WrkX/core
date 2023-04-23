@@ -1244,13 +1244,13 @@ bool ChatHandler::HandleWhispersCommand(char* args)
     // whisper on
     if (value)
     {
-        GetSession()->GetMasterPlayer()->SetAcceptWhispers(true);
+        GetSession()->GetPlayer()->SetAcceptWhispers(true);
         SendSysMessage(LANG_COMMAND_WHISPERON);
     }
     // whisper off
     else
     {
-        GetSession()->GetMasterPlayer()->SetAcceptWhispers(false);
+        GetSession()->GetPlayer()->SetAcceptWhispers(false);
         GetSession()->GetMasterPlayer()->ClearAllowedWhisperers();
         SendSysMessage(LANG_COMMAND_WHISPEROFF);
     }
@@ -4350,7 +4350,9 @@ bool ChatHandler::HandleModifyMoneyCommand(char* args)
     if (HasLowerSecurity(chr))
         return false;
 
-    int32 addmoney = atoi(args);
+    int32 addmoney;
+    if (!ExtractInt32(&args, addmoney))
+        return false;
 
     uint32 moneyuser = chr->GetMoney();
 

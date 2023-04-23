@@ -200,7 +200,7 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recv_data*/)
     if (!guid)
         return;
 
-    Loot *pLoot = nullptr;
+    Loot* pLoot = nullptr;
     Item* pItem = nullptr;
     bool shareMoneyWithGroup = true;
 
@@ -261,31 +261,31 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recv_data*/)
             Group* group = player->GetGroup();
 
             std::vector<Player*> playersNear;
+            playersNear.reserve(group->GetMembersCount());
             for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
             {
                 Player* playerGroup = itr->getSource();
                 if (!playerGroup)
                     continue;
-                //if (player->IsWithinDistInMap(playerGroup, sWorld.getConfig(CONFIG_FLOAT_GROUP_XP_DISTANCE), false))
+
                 if (player->IsWithinLootXPDist(playerGroup))
                     playersNear.push_back(playerGroup);
             }
 
-            uint32 money_per_player = uint32((pLoot->gold) / (playersNear.size()));
+            uint32 moneyPerPlayer = uint32((pLoot->gold) / (playersNear.size()));
 
             for (const auto i : playersNear)
             {
-                i->LootMoney(money_per_player, pLoot);
+                i->LootMoney(moneyPerPlayer, pLoot);
 
 #ifdef USE_ACHIEVEMENTS
 
-                i->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_MONEY, money_per_player);
+                i->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_MONEY, moneyPerPlayer);
 
 #endif
 
-                //Offset surely incorrect, but works
                 WorldPacket data(SMSG_LOOT_MONEY_NOTIFY, 4);
-                data << uint32(money_per_player);
+                data << uint32(moneyPerPlayer);
                 i->GetSession()->SendPacket(&data);
             }
         }
@@ -635,7 +635,7 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recv_data)
             target->GetShortDescription().c_str(), lootguid.GetString().c_str());
         target->SendNewItem(newitem, uint32(item.count), false, false, true);
         target->OnReceivedItem(newitem);
-   
+
 #ifdef USE_ACHIEVEMENTS
 
         target->UpdateLootAchievements(&item, pLoot);
