@@ -2722,6 +2722,102 @@ bool ChatHandler::HandleLearnAllMyTalentsCommand(char* /*args*/)
     return true;
 }
 
+bool ChatHandler::HandleLearnAllTrainerCommand(char* args)
+{
+    Player* pPlayer = m_session->GetPlayer();
+    
+    uint32 trainerId;
+    if (ExtractUInt32(&args, trainerId))
+    {
+        if (TrainerSpellData const* tSpells = sObjectMgr.GetNpcTrainerTemplateSpells(trainerId))
+            HandleLearnTrainerHelper(pPlayer, tSpells);
+        else
+        {
+            SendSysMessage("Trainer template not found!");
+            SetSentErrorMessage(true);
+            return false;
+        }
+    }
+    else
+    {
+        std::set<uint32> checkedTrainerTemplates;
+        for (uint32 i = 0; i < sCreatureStorage.GetMaxEntry(); ++i)
+        {
+            CreatureInfo const* cInfo = sCreatureStorage.LookupEntry<CreatureInfo>(i);
+            if (!cInfo)
+                continue;
+
+            if (!(cInfo->npc_flags & UNIT_NPC_FLAG_TRAINER))
+                continue;
+
+            switch (cInfo->trainer_type)
+            {
+                case TRAINER_TYPE_CLASS:
+                {
+                    if (cInfo->trainer_class != pPlayer->GetClass())
+                        continue;
+                    break;
+                }
+                case TRAINER_TYPE_PETS:
+                {
+                    if (pPlayer->GetClass() != CLASS_HUNTER)
+                        continue;
+                    break;
+                }
+            }
+
+            if (TrainerSpellData const* cSpells = sObjectMgr.GetNpcTrainerSpells(i))
+                HandleLearnTrainerHelper(pPlayer, cSpells);
+
+            if (trainerId = cInfo->trainer_id) // assignment
+            {
+                if (checkedTrainerTemplates.find(trainerId) != checkedTrainerTemplates.end())
+                    continue;
+
+                checkedTrainerTemplates.insert(trainerId);
+                if (TrainerSpellData const* tSpells = sObjectMgr.GetNpcTrainerTemplateSpells(trainerId))
+                    HandleLearnTrainerHelper(pPlayer, tSpells);
+            }
+        }
+    }
+
+    SendSysMessage("Learned all available spells from trainers.");
+    return true;
+}
+
+void ChatHandler::HandleLearnTrainerHelper(Player* player, TrainerSpellData const* tSpells)
+{
+    // spells are not in rank order, so we need to do multiple loops to learn everything
+    bool learnedAnything;
+    do
+    {
+        learnedAnything = false;
+        for (const auto& itr : tSpells->spellList)
+        {
+            TrainerSpell const* tSpell = &itr.second;
+
+            TrainerSpellState state = player->GetTrainerSpellState(tSpell);
+            if (state != TRAINER_SPELL_GREEN)
+                continue;
+
+            for (auto const& spellId : sSpellMgr.GetSpellEntry(tSpell->spell)->EffectTriggerSpell)
+            {
+                if (!spellId)
+                    continue;
+
+                if (sSpellMgr.IsPrimaryProfessionFirstRankSpell(spellId))
+                    continue;
+
+                if (!player->IsSpellFitByClassAndRace(spellId))
+                    continue;
+
+                player->LearnSpell(spellId, false);
+                learnedAnything = true;
+            }
+        }
+    } while (learnedAnything);
+}
+
 bool ChatHandler::HandleLearnAllMyTaxisCommand(char* /*args*/)
 {
     Player* player = m_session->GetPlayer();
@@ -4543,19 +4639,6 @@ bool ChatHandler::HandleModifyFlyCommand(char* args)
 
 bool ChatHandler::HandleModifyEnergyCommand(char* args)
 {
-    if (!*args)
-        return false;
-
-    int32 energy = atoi(args) * 10;
-    int32 energym = atoi(args) * 10;
-
-    if (energy <= 0 || energym <= 0 || energym < energy)
-    {
-        SendSysMessage(LANG_BAD_VALUE);
-        SetSentErrorMessage(true);
-        return false;
-    }
-
     Player* chr = GetSelectedPlayer();
     if (!chr)
     {
@@ -4564,37 +4647,37 @@ bool ChatHandler::HandleModifyEnergyCommand(char* args)
         return false;
     }
 
-    // check online security
-    if (HasLowerSecurity(chr))
+    uint32 energyMin;
+    if (!ExtractUInt32(&args, energyMin))
         return false;
 
-    PSendSysMessage(LANG_YOU_CHANGE_ENERGY, GetNameLink(chr).c_str(), energy / 10, energym / 10);
-    if (needReportToTarget(chr))
-        ChatHandler(chr).PSendSysMessage(LANG_YOURS_ENERGY_CHANGED, GetNameLink().c_str(), energy / 10, energym / 10);
+    uint32 energyMax;
+    if (!ExtractUInt32(&args, energyMax))
+        energyMax = std::max(chr->GetMaxPower(POWER_ENERGY), energyMin);
 
-    chr->SetMaxPower(POWER_ENERGY, energym);
-    chr->SetPower(POWER_ENERGY, energy);
-
-    sLog.Out(LOG_BASIC, LOG_LVL_DETAIL, GetMangosString(LANG_CURRENT_ENERGY), chr->GetMaxPower(POWER_ENERGY));
-
-    return true;
-}
-
-bool ChatHandler::HandleModifyRageCommand(char* args)
-{
-    if (!*args)
-        return false;
-
-    int32 rage = atoi(args) * 10;
-    int32 ragem = atoi(args) * 10;
-
-    if (rage <= 0 || ragem <= 0 || ragem < rage)
+    if (energyMin < 0 || energyMax < 0 || energyMax < energyMin)
     {
         SendSysMessage(LANG_BAD_VALUE);
         SetSentErrorMessage(true);
         return false;
     }
 
+    // check online security
+    if (HasLowerSecurity(chr))
+        return false;
+
+    PSendSysMessage(LANG_YOU_CHANGE_ENERGY, GetNameLink(chr).c_str(), energyMin, energyMax);
+    if (needReportToTarget(chr))
+        ChatHandler(chr).PSendSysMessage(LANG_YOURS_ENERGY_CHANGED, GetNameLink().c_str(), energyMin, energyMax);
+
+    chr->SetMaxPower(POWER_ENERGY, energyMax);
+    chr->SetPower(POWER_ENERGY, energyMin);
+
+    return true;
+}
+
+bool ChatHandler::HandleModifyRageCommand(char* args)
+{
     Player* chr = GetSelectedPlayer();
     if (chr == nullptr)
     {
@@ -4603,16 +4686,34 @@ bool ChatHandler::HandleModifyRageCommand(char* args)
         return false;
     }
 
+    uint32 rageMin;
+    if (!ExtractUInt32(&args, rageMin))
+        return false;
+
+    uint32 rageMax;
+    if (!ExtractUInt32(&args, rageMax))
+        rageMax = std::max(chr->GetMaxPower(POWER_RAGE) / 10, rageMin);
+
+    if (rageMin < 0 || rageMax < 0 || rageMax < rageMin)
+    {
+        SendSysMessage(LANG_BAD_VALUE);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    rageMin *= 10;
+    rageMax *= 10;
+
     // check online security
     if (HasLowerSecurity(chr))
         return false;
 
-    PSendSysMessage(LANG_YOU_CHANGE_RAGE, GetNameLink(chr).c_str(), rage / 10, ragem / 10);
+    PSendSysMessage(LANG_YOU_CHANGE_RAGE, GetNameLink(chr).c_str(), rageMin / 10, rageMax / 10);
     if (needReportToTarget(chr))
-        ChatHandler(chr).PSendSysMessage(LANG_YOURS_RAGE_CHANGED, GetNameLink().c_str(), rage / 10, ragem / 10);
+        ChatHandler(chr).PSendSysMessage(LANG_YOURS_RAGE_CHANGED, GetNameLink().c_str(), rageMin / 10, rageMax / 10);
 
-    chr->SetMaxPower(POWER_RAGE, ragem);
-    chr->SetPower(POWER_RAGE, rage);
+    chr->SetMaxPower(POWER_RAGE, rageMax);
+    chr->SetPower(POWER_RAGE, rageMin);
 
     return true;
 }
