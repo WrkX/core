@@ -918,6 +918,7 @@ void BattleGroundAV::StartingEventCloseDoors()
 void BattleGroundAV::StartingEventOpenDoors()
 {
     OpenDoorEvent(BG_EVENT_DOOR);
+    SpawnEvent(BG_EVENT_GHOST_GATE, 0, false, true);
 }
 
 void BattleGroundAV::AddPlayer(Player* player)
@@ -1186,8 +1187,8 @@ void BattleGroundAV::PopulateMineNode(uint8 mine, BattleGroundAVTeamIndex teamId
     }
 }
 
-/// will spawn and despawn creatures around a node
-/// more a wrapper around spawnevent cause graveyards are special
+// will spawn and despawn creatures around a node
+// more a wrapper around spawnevent cause graveyards are special
 void BattleGroundAV::PopulateNode(BG_AV_Nodes node)
 {
     ASSERT(node < BG_AV_NODES_MAX);
@@ -1266,7 +1267,7 @@ void BattleGroundAV::PopulateNode(BG_AV_Nodes node)
 }
 
 
-/// called when using a banner
+// called when using a banner
 void BattleGroundAV::EventPlayerClickedOnFlag(Player* source, GameObject* targetGo)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
@@ -1619,6 +1620,9 @@ void BattleGroundAV::Reset()
     m_activeEvents[BG_AV_LIEUTENANT_A]        = 0;
     m_activeEvents[BG_AV_LIEUTENANT_H]        = 0;
 
+    // ghost gates spawned at beginning
+    m_activeEvents[BG_EVENT_GHOST_GATE] = 0;
+
     for (BG_AV_Nodes i = BG_AV_NODES_DUNBALDAR_SOUTH; i <= BG_AV_NODES_FROSTWOLF_WTOWER; ++i)  // towers
         m_activeEvents[BG_AV_COMMANDER_A_MORTIMER + i - BG_AV_NODES_DUNBALDAR_SOUTH] = 0; // Commanders are alive
 
@@ -1636,7 +1640,6 @@ void BattleGroundAV::Reset()
 
     /** Initialize challenge objectives */
     initializeChallengeInvocationGoals();
-
 }
 
 
