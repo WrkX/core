@@ -95,7 +95,7 @@ public:
     void LearnArmorProficiencies();
     void LearnPremadeSpecForClass();
     void EquipPremadeGearTemplate();
-    void EquipRandomGearInEmptySlots();
+    void EquipRandomGearInEmptySlots(CombatBotRoles role = ROLE_RANGE_DPS);
     void AutoEquipGear(uint32 option);
     void LearnRandomTalents();
     

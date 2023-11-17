@@ -2526,9 +2526,11 @@ inline uint32 GetPrimaryItemStatForClassAndRole(uint8 playerClass, uint8 role)
     return ITEM_MOD_STAMINA;
 }
 
-void CombatBotBaseAI::EquipRandomGearInEmptySlots()
+void CombatBotBaseAI::EquipRandomGearInEmptySlots(CombatBotRoles role)
 {
     LearnArmorProficiencies();
+
+    m_role = role;
 
     bool const onlyPvE = urand(0, 1) != 0;
     uint8 const honorRank = onlyPvE ? 0 : urand(5, 18);
@@ -2537,6 +2539,10 @@ void CombatBotBaseAI::EquipRandomGearInEmptySlots()
     for (auto const& itr : sObjectMgr.GetItemPrototypeMap())
     {
         ItemPrototype const* pProto = &itr.second;
+
+        // TODO: CONFIGURABLE
+        if (pProto->ItemLevel > 54)
+            continue;
 
         // Only items that have already been discovered by someone
         if (!pProto->Discovered)
@@ -2592,6 +2598,7 @@ void CombatBotBaseAI::EquipRandomGearInEmptySlots()
             if (pProto->Class == ITEM_CLASS_ARMOR &&
                 pProto->InventoryType != INVTYPE_CLOAK &&
                 pProto->InventoryType != INVTYPE_SHIELD &&
+                pProto->SubClass == ITEM_SUBCLASS_ARMOR_MISC &&
                 skill != me->GetHighestKnownArmorProficiency() &&
                 m_role != ROLE_HEALER)
                 continue;
@@ -2615,8 +2622,8 @@ void CombatBotBaseAI::EquipRandomGearInEmptySlots()
                 if (slot == EQUIPMENT_SLOT_OFFHAND)
                 {
                     // Only allow shield in offhand for tanks
-                    if (pProto->InventoryType != INVTYPE_SHIELD &&
-                        m_role == ROLE_TANK && IsShieldClass(me->GetClass()))
+                    if (pProto->InventoryType == INVTYPE_SHIELD &&
+                        m_role != ROLE_TANK && IsShieldClass(me->GetClass()))
                         continue;
 
                     // Only equip holdables on mana users

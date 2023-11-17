@@ -27,6 +27,7 @@
 #include "SpellAuras.h"
 #include "Chat.h"
 #include <random>
+#include "custom/Companions.h"
 
 enum PartyBotSpells
 {
@@ -50,7 +51,6 @@ bool PartyBotAI::OnSessionLoaded(PlayerBotEntry* entry, WorldSession* sess)
         sess->LoginPlayer(entry->playerGUID);
         return true;
     }
-
     return SpawnNewPlayer(sess, m_class, m_race, m_mapId, m_instanceId, m_x, m_y, m_z, m_o, sObjectAccessor.FindPlayer(m_cloneGuid));
 }
 
@@ -573,8 +573,28 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
 
 void PartyBotAI::OnPlayerLogin()
 {
+
+    uint32 companionGuid = sObjectMgr.GetPlayerGuidByName(me->GetName());
+    QueryResult* result = CharacterDatabase.PQuery("SELECT initialized FROM characters_companions where companion_characters_guid = %u", companionGuid);
+    Field* field = result->Fetch();
+    uint32 companionInitialized = field[0].GetUInt8();
+
     if (!m_initialized)
         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
+    if (companionInitialized == 0) {
+        me->GiveLevel(m_level);
+        me->InitTalentForLevel();
+        for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+            me->AutoUnequipItemFromSlot(i);
+        LearnPremadeSpecForClass();
+        learnAllWeaponSkills(me);
+        EquipRandomGearInEmptySlots(m_role);
+        me->UpdateSkillsToMaxSkillsForLevel();
+        CharacterDatabase.PExecute("Update characters_companions set initialized = 1 where companion_characters_guid = %u", companionGuid);
+    }
+
+    me->SaveToDB();
+    
 }
 
 void PartyBotAI::UpdateAI(uint32 const diff)

@@ -259,7 +259,9 @@ set (SCRIPTS_SRCS
     world/dragons_of_nightmare/boss_lethon.cpp
     world/dragons_of_nightmare/boss_taerar.cpp
     world/dragons_of_nightmare/boss_ysondre.cpp
-
+	custom/Companions.cpp
+	custom/Companions.h
+	custom/Companions_npc_scripts.cpp
 )
 
 if((${CMAKE_VERSION} VERSION_LESS "3.16") OR USE_PCH_OLD)

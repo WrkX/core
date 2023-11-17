@@ -41,6 +41,14 @@ public:
         m_updateTimer.Reset(2000);
     }
 
+    PartyBotAI(Player* pLeader, uint32 mapId, CombatBotRoles role, uint8 level, uint32 instanceId, float x, float y, float z, float o)
+        : CombatBotBaseAI(), m_mapId(mapId), m_level(level), m_instanceId(instanceId), m_x(x), m_y(y), m_z(z), m_o(o)
+    {
+        m_role = role;
+        m_leaderGuid = pLeader->GetObjectGuid();
+        m_updateTimer.Reset(2000);
+    }
+
     bool OnSessionLoaded(PlayerBotEntry* entry, WorldSession* sess) final;
     void OnPlayerLogin() final;
     void UpdateAI(uint32 const diff) final;
