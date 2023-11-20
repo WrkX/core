@@ -377,6 +377,7 @@ bool learnAllWeaponSkills(Player* player)
         uint16 weaponSkill = wSkills[i];
         player->SetSkill(weaponSkill, 1, 300);
     }
+    return true;
 }
 
 

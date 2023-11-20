@@ -11,20 +11,200 @@
 
 std::vector<uint32> guids (20);
 
+void SendDefaultMenu_MobileCompanionNPC(Player* player, Creature* creature, uint32 action)
+{
+    uint32 greetingsText = 21000;
+    uint32 loadCompanionsText = 21004;
+    const char* joinText = "Request Companions to join";
+    uint8 companionClass;
+    CombatBotRoles companionRoles;
+    uint32 playerguid;
+    QueryResult* result;
+
+    uint8 iterator = 1;
+    switch (action)
+    {
+        // Load companion cases
+    case 200:
+        playerguid = player->GetGUIDLow();
+        result = CharacterDatabase.PQuery("SELECT comp.guid, comp.name, comp.class, cc.role, comp.level FROM characters_companions cc INNER JOIN characters c ON c.guid = cc.characters_guid INNER JOIN characters comp ON comp.guid = cc.companion_characters_guid WHERE c.guid = %u", playerguid);
+        if (result)
+        {
+            do
+            {
+                uint32 compGuid;
+                uint8 compClassInt, compRoleInt, compLevel;
+
+                std::string name, compClass, compRole;
+                Field* cc = result->Fetch();
+                compGuid = cc[0].GetUInt32();
+                name = cc[1].GetString();
+                compClassInt = cc[2].GetUInt8();
+                compRoleInt = cc[3].GetUInt8();
+                compLevel = cc[4].GetUInt8();
+
+                switch (compClassInt)
+                {
+                case 1:
+                    compClass = "Warrior";
+                    break;
+                case 2:
+                    compClass = "Paladin";
+                    break;
+                case 3:
+                    compClass = "Hunter";
+                    break;
+                case 4:
+                    compClass = "Rogue";
+                    break;
+                case 5:
+                    compClass = "Priest";
+                    break;
+                case 7:
+                    compClass = "Shaman";
+                    break;
+                case 8:
+                    compClass = "Mage";
+                    break;
+                case 9:
+                    compClass = "Warlock";
+                    break;
+                case 11:
+                    compClass = "Druid";
+                    break;
+                }
+                switch (compRoleInt)
+                {
+                case 1:
+                    compRole = "Meele DPS";
+                    break;
+                case 2:
+                    compRole = "Range DPS";
+                    break;
+                case 3:
+                    compRole = "Tank";
+                    break;
+                case 4:
+                    compRole = "Healer";
+                    break;
+                }
+
+                std::string concatString = name + " - Level " + std::to_string(compLevel) + " " + compClass + " - " + compRole;
+                const char* CompanionString = concatString.c_str();
+                player->ADD_GOSSIP_ITEM(0, CompanionString, GOSSIP_SENDER_MAIN, 200 + iterator);
+                //sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "GUID %u: %u", iterator, compGuid);
+                guids[iterator - 1] = compGuid;
+
+                iterator++;
+            } while (result->NextRow());
+        }
+
+        delete result;
+        player->SEND_GOSSIP_MENU(loadCompanionsText, creature->GetGUID());
+        break;
+    case 201:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[0]);
+        break;
+
+    case 202:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[1]);
+        break;
+    case 203:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[2]);
+        break;
+    case 204:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[3]);
+        break;
+    case 205:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[4]);
+        break;
+    case 206:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[5]);
+        break;
+    case 207:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[6]);
+        break;
+    case 208:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[7]);
+        break;
+    case 209:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[8]);
+        break;
+    case 210:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[9]);
+        break;
+    case 211:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[10]);
+        break;
+    case 212:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[11]);
+        break;
+    case 213:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[12]);
+        break;
+    case 214:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[13]);
+        break;
+    case 215:
+        player->CLOSE_GOSSIP_MENU();
+        loadBotFromMenu(player, guids[14]);
+        break;
+    }
+}
+
+bool GossipSelect_MobileCompanionNPC(Player* player, Creature* creature, uint32 sender, uint32 action)
+{
+    // Main menu
+    if (sender == GOSSIP_SENDER_MAIN)
+        SendDefaultMenu_MobileCompanionNPC(player, creature, action);
+    return true;
+}
+bool OnGossipHello_MobileCompanionNPC(Player* player, Creature* creature)
+{
+    uint32 greetingsText = 21000;
+    const char* joinText = "Request Companions to join";
+    player->ADD_GOSSIP_ITEM(5, joinText, GOSSIP_SENDER_MAIN, 200);
+    player->SEND_GOSSIP_MENU(greetingsText, creature->GetGUID());
+    return true;
+}
 
 bool OnGossipHello_CompanionNPC(Player* player, Creature* creature)
 {
-    uint32 calculatedCosts = getCompanionCosts(player);
-    uint32 greetingsText = 21000;
-    std::string costText = "Recruit new Companions for " + formatPrice(calculatedCosts);
-    const char* recruitText = costText.c_str();
-    const char* joinText = "Request Companions to join";
-    const char* cancelText = "Cancel Companion contracts";
-    player->ADD_GOSSIP_ITEM(5, recruitText, GOSSIP_SENDER_MAIN, 1);
-    player->ADD_GOSSIP_ITEM(5, joinText, GOSSIP_SENDER_MAIN, 200);
-    player->ADD_GOSSIP_ITEM(5, cancelText, GOSSIP_SENDER_MAIN, 300);
-    player->SEND_GOSSIP_MENU(greetingsText, creature->GetGUID());
+
+    if (player->GetLevel() >= 10)
+    {
+        uint32 calculatedCosts = getCompanionCosts(player);
+        uint32 greetingsText = 21000;
+        uint32 notLevelTen = 21008;
+        std::string costText = "Recruit new Companions for " + formatPrice(calculatedCosts);
+        const char* recruitText = costText.c_str();
+        const char* joinText = "Request Companions to join";
+        const char* cancelText = "Cancel Companion contracts";
+        player->ADD_GOSSIP_ITEM(5, recruitText, GOSSIP_SENDER_MAIN, 1);
+        player->ADD_GOSSIP_ITEM(5, joinText, GOSSIP_SENDER_MAIN, 200);
+        player->ADD_GOSSIP_ITEM(5, cancelText, GOSSIP_SENDER_MAIN, 300);
+        player->SEND_GOSSIP_MENU(greetingsText, creature->GetGUID());
+
+    } 
+    else
+        player->SEND_GOSSIP_MENU(21008, creature->GetGUID());
+        
     return true;
+    
 }
 
 void SendDefaultMenu_CompanionNPC(Player* player, Creature* creature, uint32 action)
@@ -854,5 +1034,11 @@ void AddSC_custom_companions()
     newscript->Name = "npc_companions";
     newscript->pGossipHello = &OnGossipHello_CompanionNPC;
     newscript->pGossipSelect = &GossipSelect_CompanionNPC;
+    newscript->RegisterSelf(false);
+
+    newscript = new Script;
+    newscript->Name = "npc_mobile_companions";
+    newscript->pGossipHello = &OnGossipHello_MobileCompanionNPC;
+    newscript->pGossipSelect = &GossipSelect_MobileCompanionNPC;
     newscript->RegisterSelf(false);
 }
