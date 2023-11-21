@@ -184,13 +184,13 @@ uint32 Quest::XPValue(Player* pPlayer) const
 
             if (pLevel <= qLevel +  5)
                 return uint32(ceilf(fullxp));
-            else if (pLevel == qLevel +  6)
+            else if (pLevel <= qLevel + 8)
                 return uint32(ceilf(fullxp * 0.8f));
-            else if (pLevel == qLevel +  7)
+            else if (pLevel <= qLevel + 10)
                 return uint32(ceilf(fullxp * 0.6f));
-            else if (pLevel == qLevel +  8)
+            else if (pLevel <= qLevel +  12)
                 return uint32(ceilf(fullxp * 0.4f));
-            else if (pLevel == qLevel +  9)
+            else if (pLevel <= qLevel +  15)
                 return uint32(ceilf(fullxp * 0.2f));
             else
                 return uint32(ceilf(fullxp * 0.1f));
