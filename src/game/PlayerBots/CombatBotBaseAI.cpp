@@ -2744,6 +2744,19 @@ void CombatBotBaseAI::EquipRandomGearInEmptySlots(CombatBotRoles role)
         me->SatisfyItemRequirements(pProto);
         me->StoreNewItemInBestSlots(pProto->ItemId, 1);
     }
+
+    for (uint8 i = 0; i < 4; ++i)
+    {
+        if (me->GetClass() == CLASS_HUNTER && i == 0)
+        {
+            me->MoveItemFromInventory(INVENTORY_SLOT_BAG_START + 1, 1, true);
+            me->AutoUnequipItemFromSlot(20);
+            me->StoreNewItemInBestSlots(19319, 1);
+            AddHunterAmmo();
+        } 
+        else 
+            me->StoreNewItemInBestSlots(99999, 1);
+    }
 }
 
 void CombatBotBaseAI::AutoEquipGear(uint32 option)
