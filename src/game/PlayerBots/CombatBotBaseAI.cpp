@@ -927,6 +927,11 @@ void CombatBotBaseAI::PopulateSpellData()
                     if (IsHigherRankSpell(m_spells.priest.pSmite))
                         m_spells.priest.pSmite = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Shadowform") != std::string::npos)
+                {
+                    if (IsHigherRankSpell(m_spells.priest.pShadowform))
+                        m_spells.priest.pShadowform = pSpellEntry;
+                        }
                 break;
             }
             case CLASS_WARLOCK:
