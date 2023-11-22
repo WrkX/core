@@ -2635,12 +2635,21 @@ void CombatBotBaseAI::EquipRandomGearInEmptySlots(CombatBotRoles role)
                     if (pProto->InventoryType == INVTYPE_SHIELD &&
                         m_role != ROLE_TANK && IsShieldClass(me->GetClass()))
                         continue;
+                    
+                    if (pProto->InventoryType != INVTYPE_SHIELD &&
+                        m_role == ROLE_TANK && IsShieldClass(me->GetClass()))
+                        continue;
 
                     // Only equip holdables on mana users
                     if (pProto->InventoryType == INVTYPE_HOLDABLE &&
                         m_role != ROLE_HEALER && m_role != ROLE_RANGE_DPS)
                         continue;
                 }
+
+                if (pProto->InventoryType == INVTYPE_2HWEAPON
+                    && m_role == ROLE_TANK
+                    && me->GetClass() != CLASS_DRUID)
+                    continue;
 
                 itemsPerSlot[slot].push_back(pProto);
 
