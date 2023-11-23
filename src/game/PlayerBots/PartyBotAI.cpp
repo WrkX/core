@@ -177,7 +177,7 @@ bool PartyBotAI::RunAwayFromTarget(Unit* pEnemy)
         return true;
     }
 
-    return me->GetMotionMaster()->MoveDistance(pEnemy, 15.0f);
+    return me->GetMotionMaster()->MoveDistance(pEnemy, 30.0f);
 }
 
 bool PartyBotAI::DrinkAndEat()
@@ -1434,11 +1434,22 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
 {
     if (Unit* pVictim = me->GetVictim())
     {
-        if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE
-            && me->GetDistance(pVictim) > 30.0f)
+
+        if (!me->HasUnitState(UNIT_STAT_ROOT) &&
+            (me->GetCombatDistance(pVictim) < 20.0f) &&
+            (GetRole() != ROLE_MELEE_DPS) &&
+            me->GetMotionMaster()->GetCurrentMovementGeneratorType() != DISTANCING_MOTION_TYPE)
         {
-            me->GetMotionMaster()->MoveChase(pVictim, 25.0f);
+            if (!me->IsStopped())
+                me->StopMoving();
+            me->GetMotionMaster()->Clear();
+            if (RunAwayFromTarget(pVictim))
+                return;
         }
+
+        if (me->GetDistance(pVictim) > 50.0f &&
+            me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
+            me->GetMotionMaster()->MoveChase(pVictim, 25.0f, 1.0f);
 
         if (m_spells.hunter.pVolley &&
            (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
@@ -1466,7 +1477,8 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
 
         if (m_spells.hunter.pConcussiveShot &&
             pVictim->IsMoving() && (pVictim->GetVictim() == me) &&
-            CanTryToCastSpell(pVictim, m_spells.hunter.pConcussiveShot))
+            CanTryToCastSpell(pVictim, m_spells.hunter.pConcussiveShot) && 
+            !pVictim->IsImmuneToMechanic(MECHANIC_DAZE))
         {
             if (DoCastSpell(pVictim, m_spells.hunter.pConcussiveShot) == SPELL_CAST_OK)
                 return;
@@ -1475,14 +1487,24 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
         if (m_spells.hunter.pAimedShot &&
             CanTryToCastSpell(pVictim, m_spells.hunter.pAimedShot))
         {
+            me->StopMoving();
             if (DoCastSpell(pVictim, m_spells.hunter.pAimedShot) == SPELL_CAST_OK)
                 return;
         }
 
         if (m_spells.hunter.pArcaneShot &&
+            !m_spells.hunter.pAimedShot &&
             CanTryToCastSpell(pVictim, m_spells.hunter.pArcaneShot))
         {
             if (DoCastSpell(pVictim, m_spells.hunter.pArcaneShot) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (m_spells.hunter.pMultiShot &&
+            CanTryToCastSpell(pVictim, m_spells.hunter.pMultiShot))
+        {
+            me->StopMoving();
+            if (DoCastSpell(pVictim, m_spells.hunter.pMultiShot) == SPELL_CAST_OK)
                 return;
         }
 
@@ -1490,13 +1512,6 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             CanTryToCastSpell(pVictim, m_spells.hunter.pSerpentSting))
         {
             if (DoCastSpell(pVictim, m_spells.hunter.pSerpentSting) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.hunter.pMultiShot &&
-            CanTryToCastSpell(pVictim, m_spells.hunter.pMultiShot))
-        {
-            if (DoCastSpell(pVictim, m_spells.hunter.pMultiShot) == SPELL_CAST_OK)
                 return;
         }
 
@@ -1508,13 +1523,6 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
                 CanTryToCastSpell(pAttacker, m_spells.hunter.pScareBeast))
             {
                 if (DoCastSpell(pAttacker, m_spells.hunter.pScareBeast) == SPELL_CAST_OK)
-                    return;
-            }
-
-            if (m_spells.hunter.pDisengage &&
-                CanTryToCastSpell(pAttacker, m_spells.hunter.pDisengage))
-            {
-                if (DoCastSpell(pAttacker, m_spells.hunter.pDisengage) == SPELL_CAST_OK)
                     return;
             }
 
@@ -1534,9 +1542,14 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             }
         }
 
+        
+
         if (pVictim->CanReachWithMeleeAutoAttack(me))
         {
+            
+
             if (m_spells.hunter.pWingClip &&
+                !pVictim->IsImmuneToMechanic(MECHANIC_SNARE) &&
                 CanTryToCastSpell(pVictim, m_spells.hunter.pWingClip))
             {
                 DoCastSpell(pVictim, m_spells.hunter.pWingClip);
@@ -1554,6 +1567,7 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
                 DoCastSpell(pVictim, m_spells.hunter.pRaptorStrike);
             }
         }
+
         else
         {
             if (m_spells.hunter.pAspectOfTheHawk &&
@@ -1564,17 +1578,7 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             }
         }
 
-        if (!me->HasUnitState(UNIT_STAT_ROOT) &&
-            (me->GetCombatDistance(pVictim) < 8.0f) &&
-            (GetRole() != ROLE_MELEE_DPS) &&
-             me->GetMotionMaster()->GetCurrentMovementGeneratorType() != DISTANCING_MOTION_TYPE)
-        {
-            if (!me->IsStopped())
-                me->StopMoving();
-            me->GetMotionMaster()->Clear();
-            if (RunAwayFromTarget(pVictim))
-                return;
-        }
+        
     }
 }
 
