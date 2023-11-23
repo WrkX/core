@@ -28,6 +28,11 @@
 #include "Chat.h"
 #include <random>
 #include "custom/Companions.h"
+#include "custom/custom_raid_strats.h"
+
+
+
+
 
 enum PartyBotSpells
 {
@@ -987,7 +992,13 @@ void PartyBotAI::UpdateInCombatAI()
         else if (CrowdControlMarkedTargets())
             return;
     }
-
+    
+    if (partybotIsInRaid(me)) {
+        if (me->GetMapId() == 409) 
+        {
+            moltenCoreTactics(me);
+        }
+    }
     switch (me->GetClass())
     {
         case CLASS_PALADIN:
