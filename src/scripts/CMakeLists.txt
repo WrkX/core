@@ -262,6 +262,8 @@ set (SCRIPTS_SRCS
 	custom/Companions.cpp
 	custom/Companions.h
 	custom/Companions_npc_scripts.cpp
+	custom/custom_raid_strats.cpp
+	custom/custom_raid_strats.h
 )
 
 if((${CMAKE_VERSION} VERSION_LESS "3.16") OR USE_PCH_OLD)
