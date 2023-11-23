@@ -3003,6 +3003,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         }
     }
 
+/* 
     if (m_spells.druid.pThorns)
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.druid.pThorns))
@@ -3016,7 +3017,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
                 }
             }
         }
-    }
+    }*/
 
     if (m_spells.druid.pNaturesGrasp &&
         CanTryToCastSpell(me, m_spells.druid.pNaturesGrasp))
