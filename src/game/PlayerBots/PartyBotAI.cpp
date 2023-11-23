@@ -1653,6 +1653,18 @@ void PartyBotAI::UpdateInCombatAI_Mage()
 {
     if (Unit* pVictim = me->GetVictim())
     {
+        if (m_spells.mage.pRemoveLesserCurse)
+        {
+            if (Unit* pFriend = SelectDispelTarget(m_spells.mage.pRemoveLesserCurse))
+            {
+                if (CanTryToCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse))
+                {
+                    if (DoCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse) == SPELL_CAST_OK)
+                        return;
+                }
+            }
+        }
+
         if (m_spells.mage.pCombustion &&
             CanTryToCastSpell(me, m_spells.mage.pCombustion))
         {
