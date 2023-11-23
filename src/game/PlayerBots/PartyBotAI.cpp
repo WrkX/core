@@ -1916,7 +1916,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
             }
         }
     }
-
+    /* 
     if (m_spells.priest.pShadowProtection)
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.priest.pShadowProtection))
@@ -1930,7 +1930,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
                 }
             }
         }
-    }
+    }*/
 
     if (m_spells.priest.pInnerFire &&
         CanTryToCastSpell(me, m_spells.priest.pInnerFire))
@@ -1947,6 +1947,26 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
         !me->HasGCD(m_spells.priest.pPowerWordFortitude)))
     {
         m_isBuffing = false;
+    }
+
+    if (m_role == ROLE_RANGE_DPS && m_spells.priest.pShadowform &&
+        CanTryToCastSpell(me, m_spells.priest.pShadowform))
+    {
+        if (DoCastSpell(me, m_spells.priest.pShadowform) == SPELL_CAST_OK)
+            return;
+    }
+
+    // Dispels
+    if (m_spells.priest.pDispelMagic)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pDispelMagic))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.priest.pDispelMagic))
+            {
+                if (DoCastSpell(pFriend, m_spells.priest.pDispelMagic) == SPELL_CAST_OK)
+                    return;
+            }
+        }
     }
 
     if (m_role == ROLE_HEALER &&
@@ -2093,8 +2113,17 @@ void PartyBotAI::UpdateInCombatAI_Priest()
                 return;
         }
 
+        if (m_spells.priest.pMindFlay &&
+            (!GetAttackersInRangeCount(10.0f) || me->HasAuraType(SPELL_AURA_SCHOOL_ABSORB)) &&
+            CanTryToCastSpell(pVictim, m_spells.priest.pMindFlay))
+        {
+            if (DoCastSpell(pVictim, m_spells.priest.pMindFlay) == SPELL_CAST_OK)
+                return;
+        }
+
         if (m_spells.priest.pPsychicScream &&
             GetAttackersInRangeCount(10.0f) &&
+            !pVictim->IsImmuneToMechanic(MECHANIC_FEAR) &&
             CanTryToCastSpell(me, m_spells.priest.pPsychicScream))
         {
             if (DoCastSpell(me, m_spells.priest.pPsychicScream) == SPELL_CAST_OK)
@@ -2106,14 +2135,6 @@ void PartyBotAI::UpdateInCombatAI_Priest()
             CanTryToCastSpell(pVictim, m_spells.priest.pManaBurn))
         {
             if (DoCastSpell(pVictim, m_spells.priest.pManaBurn) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.priest.pMindFlay &&
-           (!GetAttackersInRangeCount(10.0f) || me->HasAuraType(SPELL_AURA_SCHOOL_ABSORB)) &&
-            CanTryToCastSpell(pVictim, m_spells.priest.pMindFlay))
-        {
-            if (DoCastSpell(pVictim, m_spells.priest.pMindFlay) == SPELL_CAST_OK)
                 return;
         }
 
