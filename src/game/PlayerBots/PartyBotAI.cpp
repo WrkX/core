@@ -1773,17 +1773,7 @@ void PartyBotAI::UpdateInCombatAI_Mage()
                 return;
         }
 
-        if (m_spells.mage.pRemoveLesserCurse)
-        {
-            if (Unit* pFriend = SelectDispelTarget(m_spells.mage.pRemoveLesserCurse))
-            {
-                if (CanTryToCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse))
-                {
-                    if (DoCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-        }
+        
 
         if (m_spells.mage.pBlizzard &&
            (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
