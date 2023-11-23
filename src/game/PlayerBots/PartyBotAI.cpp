@@ -719,7 +719,15 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         me->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
     if (me->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
+    {
+        if (me->GetClass() == CLASS_WARRIOR && CanTryToCastSpell(me, m_spells.warrior.pBerserkerRage));
+        {
+            if (DoCastSpell(me, m_spells.warrior.pBerserkerRage) == SPELL_CAST_OK)
+                return;
+        }
         return;
+    }
+        
 
     if (me->IsDead())
     {
