@@ -38,6 +38,4 @@ std::string CreateRandomBotName(uint8 gender);
 
 bool canGetNewCompanion(uint32 charguid);
 
-bool learnAllWeaponSkills(Player* player);
-
 #endif

@@ -1,3 +1,4 @@
+#include "Chat.h"
 #include "Companions.h"
 
 
@@ -71,8 +72,8 @@ bool cancelCompanionContract(Player* pPlayer, uint32 companionGuid)
 
     Player* player = new Player(session);
     player->DeleteFromDB(companionGuid, toDeletePlayerAccountId);
-    delete session;
     delete player;
+    delete session;
     return true;
 }
 
@@ -349,35 +350,101 @@ bool canGetNewCompanion(uint32 charguid)
     return false;
 }
 
-bool learnAllWeaponSkills(Player* player)
+bool ChatHandler::HandleCompanionEquipCommand(char* args) 
 {
-    uint8 pClass = player->GetClass();
+    Player* pPlayer = GetSession()->GetPlayer();
+    Group* pGroup = pPlayer->GetGroup();
+    char* arg1 = ExtractQuotedArg(&args);
+    char* arg2 = ExtractQuotedArg(&args);
+    std::string partyName(arg1);
+    std::string item(arg2);
 
-    std::vector <uint16> wSkills;
-
-    if (pClass == 1)
-        wSkills.insert(wSkills.end(), { SKILL_FIST_WEAPONS,SKILL_MACES, SKILL_2H_MACES, SKILL_AXES ,SKILL_2H_AXES, SKILL_BOWS, SKILL_CROSSBOWS, SKILL_DAGGERS, SKILL_GUNS, SKILL_POLEARMS, SKILL_STAVES,SKILL_THROWN });
-    else if (pClass == 2)
-        wSkills.insert(wSkills.end(), { SKILL_MACES,SKILL_2H_AXES,SKILL_2H_MACES,SKILL_2H_SWORDS,SKILL_AXES,SKILL_SWORDS,SKILL_POLEARMS });
-    else if (pClass == 3)
-            wSkills.insert(wSkills.end(), { SKILL_GUNS, SKILL_AXES, SKILL_BOWS, SKILL_CROSSBOWS, SKILL_FIST_WEAPONS, SKILL_SWORDS, SKILL_POLEARMS, SKILL_STAVES, SKILL_THROWN, SKILL_2H_AXES, SKILL_2H_SWORDS });
-    else if (pClass == 4)
-                wSkills.insert(wSkills.end(), { SKILL_DAGGERS,SKILL_THROWN,SKILL_BOWS,SKILL_CROSSBOWS,SKILL_FIST_WEAPONS,SKILL_GUNS,SKILL_MACES,SKILL_SWORDS });
-    else if (pClass == 5)
-                    wSkills.insert(wSkills.end(), { SKILL_MACES,SKILL_DAGGERS,SKILL_STAVES });
-    else if (pClass == 7)
-                    wSkills.insert(wSkills.end(), { SKILL_MACES, SKILL_STAVES,SKILL_AXES,SKILL_DAGGERS,SKILL_2H_AXES,SKILL_2H_MACES,SKILL_FIST_WEAPONS });
-    else if (pClass == 8)
-                    wSkills.insert(wSkills.end(), { SKILL_STAVES,SKILL_DAGGERS,SKILL_SWORDS });
-    else if (pClass == 9)
-                    wSkills.insert(wSkills.end(), { SKILL_DAGGERS, SKILL_SWORDS,SKILL_STAVES });
-    else
-        wSkills.insert(wSkills.end(), { SKILL_DAGGERS,SKILL_STAVES,SKILL_FIST_WEAPONS,SKILL_MACES, SKILL_2H_MACES });
-    for (size_t i = 0; i != wSkills.size(); ++i) {
-        uint16 weaponSkill = wSkills[i];
-        player->SetSkill(weaponSkill, 1, 300);
+    QueryResult* result = WorldDatabase.PQuery("SELECT `entry`,`Inventory_Type` FROM `item_template` WHERE `name` = '%s'", item);
+    if (!result)
+    {
+        SendSysMessage("Item not found in db.");
+        SetSentErrorMessage(true);
+        return false;
     }
+    Field* field = result->Fetch();
+    uint32 itemId = field[0].GetUInt32();
+    uint8 slot = 16;//field[0].GetUInt8();
+    delete result;
+
+    PSendSysMessage("ItemID: %u", itemId);
+    SetSentErrorMessage(true);
+
+    if (!pGroup)
+        return false;
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Player* pMember = itr->getSource())
+        {
+            if (pMember == pPlayer)
+                continue;
+
+            PSendSysMessage("Member: %c", pMember->GetName());
+            SetSentErrorMessage(true);
+
+            if (pMember->AI())
+            {
+                pMember->AutoUnequipItemFromSlot(slot);
+                //pMember->StoreNewItemInBestSlots(itemId, 1);
+                return true;
+            }
+        }
+    }
+    PSendSysMessage("Player not found.");
+    SetSentErrorMessage(true);
+    return false;
+
+    //DeleteFromInventoryDB
+    /* 
+ 
+    char* arg1 = ExtractArg(&args);
+    char* arg2 = ExtractArg(&args);
+    
+    arg1->
+    PSendSysMessage("arg1: %c", arg1);
+    SetSentErrorMessage(true);
+    PSendSysMessage("arg2: %c", arg2);
+    SetSentErrorMessage(true);
     return true;
+
+    // if not guild name only (in "") then player name
+    ObjectGuid target_guid;
+    if (!ExtractPlayerTarget(&nameStr, nullptr, &target_guid))
+    {
+        PSendSysMessage("Error, player not found", nameStr);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    char* cId = ExtractKeyFromLink(&args, "Hitem");
+
+    if (!cId)
+        return false;
+
+    uint32 itemId = 0;
+    if (!ExtractUInt32(&cId, itemId))
+    {
+        std::string itemName = cId;
+        WorldDatabase.escape_string(itemName);
+        QueryResult* result = WorldDatabase.PQuery("SELECT `entry` FROM `item_template` WHERE `name` = '%s'", itemName.c_str());
+        if (!result)
+        {
+            PSendSysMessage("Item not found in db.");
+            SetSentErrorMessage(true);
+            return false;
+        }
+        itemId = result->Fetch()->GetUInt16();
+        delete result;
+    }
+    PSendSysMessage("Name: %c", nameStr);
+    SetSentErrorMessage(true);
+    PSendSysMessage("Item: %u", itemId);
+    SetSentErrorMessage(true);
+
+    
+    */
 }
-
-
