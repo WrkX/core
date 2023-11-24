@@ -602,25 +602,30 @@ void PartyBotAI::OnPlayerLogin()
 
     uint32 companionGuid = sObjectMgr.GetPlayerGuidByName(me->GetName());
     QueryResult* result = CharacterDatabase.PQuery("SELECT initialized FROM characters_companions where companion_characters_guid = %u", companionGuid);
-    Field* field = result->Fetch();
-    uint32 companionInitialized = field[0].GetUInt8();
-
-    if (!m_initialized)
-        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
-    if (companionInitialized == 0) {
-        me->GiveLevel(m_level);
-        me->InitTalentForLevel();
-        for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
-            me->AutoUnequipItemFromSlot(i);
-        LearnPremadeSpecForClass();
-        learnAllWeaponSkills(me);
-        EquipRandomGearInEmptySlots(m_role);
-        me->UpdateSkillsToMaxSkillsForLevel();
-        CharacterDatabase.PExecute("Update characters_companions set initialized = 1 where companion_characters_guid = %u", companionGuid);
-    }
-
-    me->SaveToDB();
     
+    if (result)
+    {
+        Field* field = result->Fetch();
+        uint32 companionInitialized = field[0].GetUInt8();
+        if (!m_initialized)
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
+        if (companionInitialized == 0) {
+            me->GiveLevel(m_level);
+            me->InitTalentForLevel();
+            for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END+1; ++i)
+                me->AutoUnequipItemFromSlot(i);
+            LearnPremadeSpecForClass();
+            if (me->GetClass() == CLASS_HUNTER)
+                me->LearnSpell(19801,false);
+            ChatHandler(me).HandleLearnAllTrainerCommand("");
+            EquipRandomGearInEmptySlots(m_role);
+            me->UpdateSkillsToMaxSkillsForLevel();
+            
+            CharacterDatabase.PExecute("Update characters_companions set initialized = 1 where companion_characters_guid = %u", companionGuid);
+        }
+        
+        me->SaveToDB();
+    }
 }
 
 void PartyBotAI::UpdateAI(uint32 const diff)
