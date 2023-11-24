@@ -3226,17 +3226,6 @@ void PartyBotAI::UpdateInCombatAI_Druid()
                 return;
             }
 
-            if (m_spells.druid.pCower &&
-                GetAttackersInRangeCount(8.0f))
-            {
-                Unit* pAttacker = *me->GetAttackers().begin();
-                if (CanTryToCastSpell(me, m_spells.druid.pCower))
-                {
-                    if (DoCastSpell(me, m_spells.druid.pCower) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-
             if (me->GetComboPoints() > 4)
             {
                 if (m_spells.druid.pFerociousBite &&
