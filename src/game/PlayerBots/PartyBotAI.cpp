@@ -42,6 +42,8 @@ enum PartyBotSpells
     PB_SPELL_SHOOT_WAND = 5019,
     PB_SPELL_HONORLESS_TARGET = 2479,
 };
+// TODO: MAKE MODIFIABLE
+uint32 m_resTimer = 15000;
 
 #define PB_UPDATE_INTERVAL 1000
 #define PB_MIN_FOLLOW_DIST 3.0f
@@ -237,10 +239,12 @@ bool PartyBotAI::DrinkAndEat()
     return needToEat || needToDrink;
 }
 
-bool PartyBotAI::ShouldAutoRevive() const
+bool PartyBotAI::ShouldAutoRevive(Player* leader) const
 {
+    me->DurabilityRepairAll(false, 0);
+    
     if (me->GetDeathState() == DEAD)
-        return true;
+        return false;
 
     bool alivePlayerNearby = false;
     Group* pGroup = me->GetGroup();
@@ -254,18 +258,35 @@ bool PartyBotAI::ShouldAutoRevive() const
             if (pMember->IsInCombat())
                 return false;
 
+            if (pMember->GetDeathState() == DEAD &&
+                pMember == leader)
+            {
+                me->BuildPlayerRepop();
+                me->RepopAtGraveyard();
+            }
+
             if (pMember->IsAlive())
             {
                 if (IsHealerClass(pMember->GetClass()))
                     return false;
 
-                if (me->IsWithinDistInMap(pMember, 15.0f))
-                    alivePlayerNearby = true;
+                if (me->IsWithinDistInMap(pMember, 5.0f))
+                {
+                    m_resTimer -= 1000;
+                    if (m_resTimer <= 0)
+                    {
+                        m_resTimer = 15000;
+                        return true;
+                    }
+                }
+                else
+                    m_resTimer = 15000;
             }
         }
     }
 
-    return alivePlayerNearby;
+    return false;
+
 }
 
 bool PartyBotAI::CanTryToCastSpell(Unit const* pTarget, SpellEntry const* pSpellEntry) const
@@ -746,7 +767,18 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         }
         else
         {
-            if (ShouldAutoRevive())
+            if (me->GetDeathState() == DEAD)
+            {
+
+                me->GetMotionMaster()->MoveFollow(pLeader, urand(PB_MIN_FOLLOW_DIST, PB_MAX_FOLLOW_DIST), frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE));
+                if (pLeader->GetDeathState() == ALIVE)
+                    {
+                    me->TeleportTo(pLeader->GetMapId(), pLeader->GetPosition().x, pLeader->GetPosition().y, pLeader->GetPosition().z, pLeader->GetPosition().o);
+                    }
+                return;
+            }
+               
+            if (ShouldAutoRevive(pLeader))
             {
                 me->ResurrectPlayer(0.5f);
                 me->SpawnCorpseBones();
