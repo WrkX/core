@@ -65,6 +65,7 @@ bool cancelCompanionContract(Player* pPlayer, uint32 companionGuid)
     Field* toDeletePlayer = result->Fetch();
     uint32 toDeletePlayerAccountId = toDeletePlayer[0].GetUInt32();
 
+    CharacterDatabase.BeginTransaction();
     CharacterDatabase.PExecute("DELETE FROM characters_companions WHERE characters_guid = %u AND companion_characters_guid = %u",
         pPlayer->GetGUIDLow(),
         companionGuid);
@@ -74,6 +75,7 @@ bool cancelCompanionContract(Player* pPlayer, uint32 companionGuid)
 
     Player* player = new Player(session);
     player->DeleteFromDB(companionGuid, toDeletePlayerAccountId);
+    CharacterDatabase.CommitTransaction();
     delete player;
     delete session;
     return true;
