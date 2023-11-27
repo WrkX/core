@@ -267,11 +267,16 @@ bool PartyBotAI::ShouldAutoRevive(Player* leader) const
 
             if (pMember->IsAlive())
             {
+                ChatHandler ch(pMember);
                 if (IsHealerClass(pMember->GetClass()))
                     return false;
 
                 if (me->IsWithinDistInMap(pMember, 5.0f))
                 {
+                    std::string botname(me->GetName());
+                    uint16 resTime = (uint16)m_resTimer/1000;
+                    ch.PSendSysMessage("%s will be ressurected in %u.", botname, resTime-1);
+                    ch.SetSentErrorMessage(true);
                     m_resTimer -= 1000;
                     if (m_resTimer <= 0)
                     {
