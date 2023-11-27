@@ -1287,6 +1287,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "antispam",       SEC_TICKETMASTER,   true, nullptr,                                         "", AntiSpamCommandTable },
         { "gold",           SEC_BASIC_ADMIN,    true, nullptr,                                         "", goldCommandTable },
         { "eq",             SEC_PLAYER,         true, &ChatHandler::HandleCompanionEquipCommand,       "", nullptr },
+        { "leq",            SEC_PLAYER,         false, &ChatHandler::HandleCompanionListEquipCommand,       "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 

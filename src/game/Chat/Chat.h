@@ -284,6 +284,7 @@ class ChatHandler
 
         //companions
         bool HandleCompanionEquipCommand(char* args);
+        bool HandleCompanionListEquipCommand(char* args);
         // spell_disabled
         bool HandleReloadSpellDisabledCommand(char *args);
         // AutoBroadCast

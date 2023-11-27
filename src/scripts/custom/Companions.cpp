@@ -354,7 +354,7 @@ bool canGetNewCompanion(uint32 charguid)
     return false;
 }
 
-bool ChatHandler::HandleCompanionEquipCommand(char* args) 
+/* 
 void PartyBotAI::extractItemIds(const std::string& text, std::list<uint32>& itemIds) const
 {
     uint8 pos = 0;
@@ -553,4 +553,124 @@ bool ChatHandler::HandleCompanionEquipCommand(char* args)
     }
 }
    
+void PartyBotAI::SendCompanionEquipList()
+{
+    // find all unequipped items and put them in
+    // a vector of dynamically created lists where the vector index is from 0-18
+    // and the list contains Item* that can be equipped to that slot
+    // Note: each dynamically created list in the vector must be deleted at end
+    // so NO EARLY RETURNS!
+    // see enum EquipmentSlots in Player.h to see what equipment slot each index in vector
+    // is assigned to. (The first is EQUIPMENT_SLOT_HEAD=0, and last is EQUIPMENT_SLOT_TABARD=18)
+    std::list<Item*>* equip[19];
+    for (uint8 i = 0; i < 19; ++i)
+        equip[i] = nullptr;
+
+    // list out items in main backpack
+    for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; slot++)
+    {
+        Item* const pItem = me->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+        if (!pItem)
+            continue;
+
+        uint16 dest;
+        uint8 msg = me->CanEquipItem(NULL_SLOT, dest, pItem, !pItem->IsBag());
+        if (msg != EQUIP_ERR_OK)
+            continue;
+
+        // the dest looks like it includes the old loc in the 8 higher bits
+        // so casting it to a uint8 strips them
+        int8 equipSlot = uint8(dest);
+        if (!(equipSlot >= 0 && equipSlot < 19))
+            continue;
+
+        // create a list if one doesn't already exist
+        if (equip[equipSlot] == nullptr)
+            equip[equipSlot] = new std::list<Item*>;
+
+        std::list<Item*>* itemListForEqSlot = equip[equipSlot];
+        itemListForEqSlot->push_back(pItem);
+    }
+
+    // list out items in other removable backpacks
+    for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END; ++bag)
+    {
+        const Bag* const pBag = (Bag*)me->GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
+        if (pBag)
+            for (uint8 slot = 0; slot < pBag->GetBagSize(); ++slot)
+            {
+                Item* const pItem = me->GetItemByPos(bag, slot);
+                if (!pItem)
+                    continue;
+
+                uint16 dest;
+                uint8 msg = me->CanEquipItem(NULL_SLOT, dest, pItem, !pItem->IsBag());
+                if (msg != EQUIP_ERR_OK)
+                    continue;
+
+                int8 equipSlot = uint8(dest);
+                if (!(equipSlot >= 0 && equipSlot < 19))
+                    continue;
+
+                // create a list if one doesn't already exist
+                if (equip[equipSlot] == nullptr)
+                    equip[equipSlot] = new std::list<Item*>;
+
+                std::list<Item*>* itemListForEqSlot = equip[equipSlot];
+                itemListForEqSlot->push_back(pItem);
+            }
+    }
+
+    ChatHandler ch(GetPartyLeader());
+
+    const std::string descr[] = { "head", "neck", "shoulders", "body", "chest",
+                                  "waist", "legs", "feet", "wrists", "hands", "finger1", "finger2",
+                                  "trinket1", "trinket2", "back", "mainhand", "offhand", "ranged",
+                                  "tabard"
+    };
+
+    // now send client all items that can be equipped by slot
+    for (uint8 equipSlot = 0; equipSlot < 19; ++equipSlot)
+    {
+        if (equip[equipSlot] == nullptr)
+            continue;
+        std::list<Item*>* itemListForEqSlot = equip[equipSlot];
+        std::ostringstream out;
+        out << descr[equipSlot] << ": ";
+        for (std::list<Item*>::iterator it = itemListForEqSlot->begin(); it != itemListForEqSlot->end(); ++it)
+        {
+            const ItemPrototype* const pItemProto = (*it)->GetProto();
+
+            std::string itemName = pItemProto->Name1;
+
+            out << " |cffffffff|Hitem:" << pItemProto->ItemId
+                << ":0:0:0:0:0:0:0" << "|h[" << itemName
+                << "]|h|r";
+        }
+        ch.SendSysMessage(out.str().c_str());
+
+        delete itemListForEqSlot; // delete list of Item*
+    }
+}
+
+bool ChatHandler::HandleCompanionListEquipCommand(char* args)
+{
+    Player* pTarget = GetSelectedPlayer();
+    if (!pTarget)
+    {
+        SendSysMessage("No target selected.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (!pTarget->AI())
+    {
+        SendSysMessage("Target is no Companion.");
+        SetSentErrorMessage(true);
+    }
+
+    if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
+    {
+        pAI->SendCompanionEquipList();
+    }
 }
