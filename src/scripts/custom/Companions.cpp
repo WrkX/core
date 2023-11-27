@@ -670,6 +670,7 @@ bool ChatHandler::HandleCompanionListEquipCommand(char* args)
         pAI->SendCompanionEquipList();
     }
 }}
+}
 
 Item* PartyBotAI::FindItem(uint32 ItemId)
 {
@@ -768,3 +769,55 @@ bool ChatHandler::HandleCompanionDeleteItem(char* args)
     }
 }
 
+bool ChatHandler::HandleCompanionDeleteEverything(char* args)
+{
+
+    Player* pTarget = GetSelectedPlayer();
+    if (!pTarget)
+    {
+        SendSysMessage("No target selected.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (!pTarget->AI())
+    {
+        SendSysMessage("Target is no Companion.");
+        SetSentErrorMessage(true);
+    }
+
+    if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
+    {
+
+        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+        {
+            Item* const item = pTarget->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+            if (item)
+            {
+                pTarget->DestroyItem(INVENTORY_SLOT_BAG_0, slot, true);
+                pTarget->SaveInventoryAndGoldToDB();
+            }
+                
+        }
+
+        for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END; ++bag)
+        {
+            
+            const Bag* const pBag = static_cast<Bag*>(pTarget->GetItemByPos(INVENTORY_SLOT_BAG_0, bag));
+            if (pBag)
+            {
+                for (uint8 slot = 0; slot < pBag->GetBagSize(); ++slot)
+                {
+                    Item* const item = pTarget->GetItemByPos(bag, slot);
+                    if (item)
+                    {
+                        pTarget->DestroyItem(bag, slot, true);
+                        pTarget->SaveInventoryAndGoldToDB();
+                    }
+                }
+            }
+        }
+        
+    }
+    pTarget->SaveInventoryAndGoldToDB();
+}

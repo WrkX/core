@@ -1299,6 +1299,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "leq",            SEC_PLAYER,         false, &ChatHandler::HandleCompanionListEquipCommand,       "", nullptr },
         { "ueq",            SEC_PLAYER,         false, &ChatHandler::HandlePartyBotUnequipCommand,       "", nullptr },
         { "deleq",          SEC_PLAYER,         false, &ChatHandler::HandleCompanionDeleteItem,        "", nullptr },
+        { "delall",         SEC_PLAYER,         false, &ChatHandler::HandleCompanionDeleteEverything,  "", nullptr },
         { "wareffort",      SEC_DEVELOPER,      true, nullptr,                                         "", warEffortCommandTable },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
