@@ -116,6 +116,8 @@ public:
     void findItemsInInv(std::list<uint32>& itemIdSearchList, std::list<Item*>& foundItemList) const;
     void EquipItem(Item* src_Item);
     void SendCompanionEquipList();
+    bool partybotIsInRaid(Player* player);
+    void moltenCoreTactics(Player* bot);
 };
 
 #endif
