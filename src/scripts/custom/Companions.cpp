@@ -64,7 +64,6 @@ bool cancelCompanionContract(Player* pPlayer, uint32 companionGuid)
     QueryResult* result = CharacterDatabase.PQuery("SELECT account from characters where guid = %u", companionGuid);
     Field* toDeletePlayer = result->Fetch();
     uint32 toDeletePlayerAccountId = toDeletePlayer[0].GetUInt32();
-
     CharacterDatabase.BeginTransaction();
     CharacterDatabase.PExecute("DELETE FROM characters_companions WHERE characters_guid = %u AND companion_characters_guid = %u",
         pPlayer->GetGUIDLow(),
@@ -346,9 +345,6 @@ bool canGetNewCompanion(uint32 charguid)
     Field* field = result->Fetch();
     uint32 companionAmount = field[0].GetUInt32();
 
-    //PSendSysMessage("Companionamount: %u", companionAmount);
-    //SetSentErrorMessage(true);
-    // TODO: Make configurable
     if (companionAmount < 15)
         return true;
     return false;
