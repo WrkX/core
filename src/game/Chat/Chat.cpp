@@ -1297,6 +1297,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "gold",           SEC_BASIC_ADMIN,    true, nullptr,                                         "", goldCommandTable },
         { "eq",             SEC_PLAYER,         true, &ChatHandler::HandleCompanionEquipCommand,       "", nullptr },
         { "leq",            SEC_PLAYER,         false, &ChatHandler::HandleCompanionListEquipCommand,       "", nullptr },
+        { "ueq",            SEC_PLAYER,         false, &ChatHandler::HandlePartyBotUnequipCommand,       "", nullptr },
         { "wareffort",      SEC_DEVELOPER,      true, nullptr,                                         "", warEffortCommandTable },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
