@@ -5800,10 +5800,11 @@ bool Player::UpdateCraftSkill(uint32 spellid)
                 craft_skill_gain = sWorld.getConfig(CONFIG_UINT32_SKILL_GAIN_CRAFTING);
             else
                 craft_skill_gain = 1;
-            return UpdateSkillPro(_spell_idx->second->skillId, SkillGainChance(SkillValue,
-                                  _spell_idx->second->max_value,
-                                  _spell_idx->second->min_value),
-                                  craft_skill_gain);
+
+            return UpdateSkillPro(_spell_idx->second->skillId, CraftingSkillGainChance(SkillValue,
+                _spell_idx->second->max_value,
+                _spell_idx->second->min_value),
+                craft_skill_gain);
         }
     }
     return false;
