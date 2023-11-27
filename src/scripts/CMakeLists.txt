@@ -261,7 +261,7 @@ set (SCRIPTS_SRCS
     world/dragons_of_nightmare/boss_ysondre.cpp
 	custom/Companions.cpp
 	custom/Companions.h
-	custom/Companions_npc_scripts.cpp
+	custom/companions_npc_scripts.cpp
 	custom/custom_raid_strats.cpp
 	custom/custom_raid_strats.h
 )

@@ -1,4 +1,5 @@
 #include "Chat.h"
+#include "Chat.h"
 #include "PartyBotAI.h"
 #include "Chat.h"
 #include "Companions.h"
@@ -88,8 +89,6 @@ bool buyNewCompanionCheck(Player* player, CombatBotRoles companionRole, uint8 co
 
     if (!charGuid)
     {
-        //SendSysMessage("CharGuid not found");
-        //SetSentErrorMessage(true);
         return false;
     }
     
@@ -113,7 +112,6 @@ void findExistingCompanion(const uint32& ccGuid, const uint8& ccClass, CombatBot
     QueryResult* botresult = CharacterDatabase.PQuery("SELECT name FROM characters WHERE guid = %u and class = %u", ccGuid, ccClass);
     Field* botname = botresult->Fetch();
     std::string ccName = botname[0].GetString();
-    //char* companionName = &*ccName.begin();
 
     loadCompanion(ccName, false, role, player);
 }
@@ -131,15 +129,11 @@ bool createNewCompanionAccount(uint8 botClass, Player* pPlayer, uint32 playerCha
     if (accountCreation == AOR_OK)
     {
         sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Account: %s was created", accountData);
-        //PSendSysMessage("Account: %s was created", accountData);
-        //SetSentErrorMessage(true);
         createBotCharacter(botClass, pPlayer, accid, playerCharGuid, role);
         return true;
     }
     else
     {
-        //PSendSysMessage("Account: %s was not created", accountData);
-        //SetSentErrorMessage(true);
         return false;
     }
 }
@@ -350,27 +344,6 @@ bool canGetNewCompanion(uint32 charguid)
     return false;
 }
 
-/* 
-void PartyBotAI::extractItemIds(const std::string& text, std::list<uint32>& itemIds) const
-{
-    uint8 pos = 0;
-    while (true)
-    {
-        int i = text.find("Hitem:", pos);
-        if (i == -1)
-            break;
-        pos = i + 6;
-        int endPos = text.find(':', pos);
-        if (endPos == -1)
-            break;
-        std::string idC = text.substr(pos, endPos - pos);
-        uint32 id = atol(idC.c_str());
-        pos = endPos;
-        if (id)
-            itemIds.push_back(id);
-    }
-}*/
-
 void PartyBotAI::findItemsInInv(std::list<uint32>& itemIdSearchList, std::list<Item*>& foundItemList) const
 {
 
@@ -496,7 +469,6 @@ void PartyBotAI::EquipItem(Item* src_Item)
 
 bool ChatHandler::HandleCompanionEquipCommand(char* args)
 {
-
     if (!args)
         return false;
 
@@ -669,7 +641,6 @@ bool ChatHandler::HandleCompanionListEquipCommand(char* args)
     {
         pAI->SendCompanionEquipList();
     }
-}}
 }
 
 Item* PartyBotAI::FindItem(uint32 ItemId)
