@@ -669,4 +669,102 @@ bool ChatHandler::HandleCompanionListEquipCommand(char* args)
     {
         pAI->SendCompanionEquipList();
     }
+}}
+
+Item* PartyBotAI::FindItem(uint32 ItemId)
+{
+    // list out items equipped & in main backpack
+    //INVENTORY_SLOT_ITEM_START = 23
+    //INVENTORY_SLOT_ITEM_END = 39
+
+    for (uint8 slot = EQUIPMENT_SLOT_START; slot < INVENTORY_SLOT_ITEM_END; slot++)
+    {
+        // DEBUG_LOG ("[PlayerbotAI]: FindItem - [%s's]backpack slot = %u",m_bot->GetName(),slot); // 23 to 38 = 16
+        Item* const pItem = me->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);  // 255, 23 to 38
+        if (pItem)
+        {
+            const ItemPrototype* const pItemProto = pItem->GetProto();
+            if (!pItemProto)
+                continue;
+
+            if (pItemProto->ItemId == ItemId)   // have required item
+                return pItem;
+        }
+    }
+    // list out items in other removable backpacks
+    //INVENTORY_SLOT_BAG_START = 19
+    //INVENTORY_SLOT_BAG_END = 23
+
+    for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END; ++bag)  // 20 to 23 = 4
+    {
+        const Bag* const pBag = (Bag*)me->GetItemByPos(INVENTORY_SLOT_BAG_0, bag);    // 255, 20 to 23
+        if (pBag)
+            for (uint8 slot = 0; slot < pBag->GetBagSize(); ++slot)
+            {
+                Item* const pItem = me->GetItemByPos(bag, slot); // 20 to 23, 1 to bagsize
+                if (pItem)
+                {
+                    const ItemPrototype* const pItemProto = pItem->GetProto();
+                    if (!pItemProto)
+                        continue;
+
+                    if (pItemProto->ItemId == ItemId)        // have required item
+                        return pItem;
+                }
+            }
+    }
+    return nullptr;
 }
+
+bool ChatHandler::HandleCompanionDeleteItem(char* args)
+{
+    if (!args)
+        return false;
+
+    char* cId = ExtractKeyFromLink(&args, "Hitem");
+
+    if (!cId)
+        return false;
+
+    uint32 itemId = 0;
+    if (!ExtractUInt32(&cId, itemId))
+    {
+        std::string itemName = cId;
+        WorldDatabase.escape_string(itemName);
+        QueryResult* result = WorldDatabase.PQuery("SELECT `entry` FROM `item_template` WHERE `name` = '%s'", itemName.c_str());
+        if (!result)
+        {
+            PSendSysMessage("Item not found in db.");
+            SetSentErrorMessage(true);
+            return false;
+        }
+        itemId = result->Fetch()->GetUInt16();
+        delete result;
+    }
+
+    Player* pTarget = GetSelectedPlayer();
+    if (!pTarget)
+    {
+        SendSysMessage("No target selected.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (!pTarget->AI())
+    {
+        SendSysMessage("Target is no Companion.");
+        SetSentErrorMessage(true);
+    }
+
+    if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
+    {
+
+        Item* pItem = pAI->FindItem(itemId);
+        if (pItem)
+        {
+            pTarget->DestroyItemCount(itemId, 1, true, false, true);
+            pTarget->SaveInventoryAndGoldToDB();
+        }
+    }
+}
+
