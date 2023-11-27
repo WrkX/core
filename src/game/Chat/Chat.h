@@ -282,6 +282,8 @@ class ChatHandler
         bool HandleBattleBotShowPathCommand(char* args);
         bool HandleBattleBotShowAllPathsCommand(char* args);
 
+        //companions
+        bool HandleCompanionEquipCommand(char* args);
         // spell_disabled
         bool HandleReloadSpellDisabledCommand(char *args);
         // AutoBroadCast

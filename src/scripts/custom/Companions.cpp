@@ -1,6 +1,8 @@
 #include "Chat.h"
+#include "PartyBotAI.h"
+#include "Chat.h"
 #include "Companions.h"
-
+#include "Bag.h"
 
 WorldSession* m_session;
 
@@ -351,74 +353,154 @@ bool canGetNewCompanion(uint32 charguid)
 }
 
 bool ChatHandler::HandleCompanionEquipCommand(char* args) 
+void PartyBotAI::extractItemIds(const std::string& text, std::list<uint32>& itemIds) const
 {
-    Player* pPlayer = GetSession()->GetPlayer();
-    Group* pGroup = pPlayer->GetGroup();
-    char* arg1 = ExtractQuotedArg(&args);
-    char* arg2 = ExtractQuotedArg(&args);
-    std::string partyName(arg1);
-    std::string item(arg2);
-
-    QueryResult* result = WorldDatabase.PQuery("SELECT `entry`,`Inventory_Type` FROM `item_template` WHERE `name` = '%s'", item);
-    if (!result)
+    uint8 pos = 0;
+    while (true)
     {
-        SendSysMessage("Item not found in db.");
-        SetSentErrorMessage(true);
-        return false;
+        int i = text.find("Hitem:", pos);
+        if (i == -1)
+            break;
+        pos = i + 6;
+        int endPos = text.find(':', pos);
+        if (endPos == -1)
+            break;
+        std::string idC = text.substr(pos, endPos - pos);
+        uint32 id = atol(idC.c_str());
+        pos = endPos;
+        if (id)
+            itemIds.push_back(id);
     }
-    Field* field = result->Fetch();
-    uint32 itemId = field[0].GetUInt32();
-    uint8 slot = 16;//field[0].GetUInt8();
-    delete result;
+}*/
 
-    PSendSysMessage("ItemID: %u", itemId);
-    SetSentErrorMessage(true);
+void PartyBotAI::findItemsInInv(std::list<uint32>& itemIdSearchList, std::list<Item*>& foundItemList) const
+{
 
-    if (!pGroup)
-        return false;
-    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    // look for items in main bag
+    for (uint8 slot = INVENTORY_SLOT_ITEM_START; itemIdSearchList.size() > 0 && slot < INVENTORY_SLOT_ITEM_END; ++slot)
     {
-        if (Player* pMember = itr->getSource())
+        Item* const pItem = me->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+        if (!pItem)
+            continue;
+
+        for (std::list<uint32>::iterator it = itemIdSearchList.begin(); it != itemIdSearchList.end(); ++it)
         {
-            if (pMember == pPlayer)
+            if (pItem->GetProto()->ItemId != *it)
                 continue;
 
-            PSendSysMessage("Member: %c", pMember->GetName());
-            SetSentErrorMessage(true);
+            if (me->GetTrader() && me->GetTradeData()->HasItem(pItem->GetObjectGuid()))
+                continue;
 
-            if (pMember->AI())
+            foundItemList.push_back(pItem);
+            itemIdSearchList.erase(it);
+            break;
+        }
+    }
+
+    // for all for items in other bags
+    for (uint8 bag = INVENTORY_SLOT_BAG_START; itemIdSearchList.size() > 0 && bag < INVENTORY_SLOT_BAG_END; ++bag)
+    {
+        Bag* const pBag = (Bag*)me->GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
+        if (!pBag)
+            continue;
+
+        for (uint8 slot = 0; itemIdSearchList.size() > 0 && slot < pBag->GetBagSize(); ++slot)
+        {
+            Item* const pItem = me->GetItemByPos(bag, slot);
+            if (!pItem)
+                continue;
+
+            for (std::list<uint32>::iterator it = itemIdSearchList.begin(); it != itemIdSearchList.end(); ++it)
             {
-                pMember->AutoUnequipItemFromSlot(slot);
-                //pMember->StoreNewItemInBestSlots(itemId, 1);
-                return true;
+                if (pItem->GetProto()->ItemId != *it)
+                    continue;
+
+                if (me->GetTrader() && me->GetTradeData()->HasItem(pItem->GetObjectGuid()))
+                    continue;
+
+                foundItemList.push_back(pItem);
+                itemIdSearchList.erase(it);
+                break;
             }
         }
     }
-    PSendSysMessage("Player not found.");
-    SetSentErrorMessage(true);
-    return false;
+}
 
-    //DeleteFromInventoryDB
-    /* 
- 
-    char* arg1 = ExtractArg(&args);
-    char* arg2 = ExtractArg(&args);
-    
-    arg1->
-    PSendSysMessage("arg1: %c", arg1);
-    SetSentErrorMessage(true);
-    PSendSysMessage("arg2: %c", arg2);
-    SetSentErrorMessage(true);
-    return true;
+void PartyBotAI::EquipItem(Item* src_Item)
+{
+    uint8 src_bagIndex = src_Item->GetBagSlot();
+    uint8 src_slot = src_Item->GetSlot();
 
-    // if not guild name only (in "") then player name
-    ObjectGuid target_guid;
-    if (!ExtractPlayerTarget(&nameStr, nullptr, &target_guid))
+    //DEBUG_LOG("PlayerbotAI::EquipItem: %s in srcbag = %u, srcslot = %u", src_Item->GetProto()->Name1, src_bagIndex, src_slot);
+
+    uint16 dest;
+    InventoryResult msg = me->CanEquipItem(NULL_SLOT, dest, src_Item, !src_Item->IsBag());
+    if (msg != EQUIP_ERR_OK)
     {
-        PSendSysMessage("Error, player not found", nameStr);
-        SetSentErrorMessage(true);
-        return false;
+        me->SendEquipError(msg, src_Item, nullptr);
+        return;
     }
+
+    uint16 src = src_Item->GetPos();
+    if (dest == src)                                        // prevent equip in same slot, only at cheat
+        return;
+
+    Item* dest_Item = me->GetItemByPos(dest);
+    if (!dest_Item)                                          // empty slot, simple case
+    {
+        me->RemoveItem(src_bagIndex, src_slot, true);
+        me->EquipItem(dest, src_Item, true);
+        me->AutoUnequipOffhandIfNeed();
+    }
+    else                                                    // have currently equipped item, not simple case
+    {
+        uint8 dest_bagIndex = dest_Item->GetBagSlot();
+        uint8 dest_slot = dest_Item->GetSlot();
+
+        msg = me->CanUnequipItem(dest, false);
+        if (msg != EQUIP_ERR_OK)
+        {
+            me->SendEquipError(msg, dest_Item, nullptr);
+            return;
+        }
+
+        // check dest->src move possibility
+        ItemPosCountVec sSrc;
+        if (me->IsInventoryPos(src))
+        {
+            msg = me->CanStoreItem(src_bagIndex, src_slot, sSrc, dest_Item, true);
+            if (msg != EQUIP_ERR_OK)
+                msg = me->CanStoreItem(src_bagIndex, NULL_SLOT, sSrc, dest_Item, true);
+            if (msg != EQUIP_ERR_OK)
+                msg = me->CanStoreItem(NULL_BAG, NULL_SLOT, sSrc, dest_Item, true);
+        }
+
+        if (msg != EQUIP_ERR_OK)
+        {
+            me->SendEquipError(msg, dest_Item, src_Item);
+            return;
+        }
+
+        // now do moves, remove...
+        me->RemoveItem(dest_bagIndex, dest_slot, false);
+        me->RemoveItem(src_bagIndex, src_slot, false);
+
+        // add to dest
+        me->EquipItem(dest, src_Item, true);
+
+        // add to src
+        if (me->IsInventoryPos(src))
+            me->StoreItem(sSrc, dest_Item, true);
+
+        me->AutoUnequipOffhandIfNeed();
+    }
+}
+
+bool ChatHandler::HandleCompanionEquipCommand(char* args)
+{
+
+    if (!args)
+        return false;
 
     char* cId = ExtractKeyFromLink(&args, "Hitem");
 
@@ -440,11 +522,33 @@ bool ChatHandler::HandleCompanionEquipCommand(char* args)
         itemId = result->Fetch()->GetUInt16();
         delete result;
     }
-    PSendSysMessage("Name: %c", nameStr);
-    SetSentErrorMessage(true);
-    PSendSysMessage("Item: %u", itemId);
-    SetSentErrorMessage(true);
 
-    
-    */
+    Player* pTarget = GetSelectedPlayer();
+    if (!pTarget)
+    {
+        SendSysMessage("No target selected.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (!pTarget->AI())
+    {
+        SendSysMessage("Target is no Companion.");
+        SetSentErrorMessage(true);
+    }
+
+    if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
+    {
+        
+
+        std::list<uint32> itemIds;
+        std::list<Item*> itemList;
+
+        itemIds.push_back(itemId);
+        pAI->findItemsInInv(itemIds, itemList);
+        for (std::list<Item*>::iterator it = itemList.begin(); it != itemList.end(); ++it)
+            pAI->EquipItem(*it);
+    }
+}
+   
 }
