@@ -106,7 +106,6 @@ void SendDefaultMenu_MobileCompanionNPC(Player* player, Creature* creature, uint
         player->CLOSE_GOSSIP_MENU();
         loadBotFromMenu(player, guids[0]);
         break;
-
     case 202:
         player->CLOSE_GOSSIP_MENU();
         loadBotFromMenu(player, guids[1]);

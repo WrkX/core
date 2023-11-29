@@ -219,7 +219,7 @@ bool createBotCharacter(uint8 botClass, Player* pPlayer, uint32 accountid, uint3
     sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Random bot created for account %d - name: \"%s\"; race: %u; class: %u",
         accountid, name.c_str(), race, botClass);
 
-    UINT32 roleInt = static_cast<UINT32>(botRole);
+    uint32 roleInt = static_cast<uint32>(botRole);
 
     CharacterDatabase.PExecute("INSERT INTO characters_companions (characters_guid, companion_characters_guid,class, role) VALUES (%u, %u, %u, %u)",
         playerCharGuid,

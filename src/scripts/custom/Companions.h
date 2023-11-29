@@ -13,10 +13,8 @@ class Player;
 
 
 bool loadBotFromMenu(Player* player, uint32 ccGuid);
-bool loadExistingBot(Player* player, CombatBotRoles companionRole, uint8 companionClass);
 bool cancelCompanionContract(Player* player, uint32 companionGuid);
 bool buyNewCompanionCheck(Player* player, CombatBotRoles companionRole, uint8 companionClass, uint32 companionCosts);
-void findExistingCompanion(const uint32& ccGuid, const uint8& ccClass, CombatBotRoles role, Player* player);
 bool createNewCompanionAccount(uint8 botClass, Player* pPlayer, uint32 playerCharGuid, CombatBotRoles role);
 std::string formatPrice(uint32 copper);
 uint32 getCompanionCosts(Player* player);
