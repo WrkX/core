@@ -2276,6 +2276,15 @@ void PartyBotAI::UpdateInCombatAI_Warlock()
 {
     if (Unit* pVictim = me->GetVictim())
     {
+        if (Pet* pPet = me->GetPet())
+        {
+            if (pPet->IsAlive() && pPet->GetCharmInfo()->GetCommandState() != COMMAND_ATTACK) {
+                pPet->GetCharmInfo()->SetIsCommandAttack(true);
+                pPet->AI()->AttackStart(pVictim);
+            }
+
+        }
+
         if (m_spells.warlock.pDeathCoil &&
            (pVictim->CanReachWithMeleeAutoAttack(me) || pVictim->IsNonMeleeSpellCasted()) &&
             CanTryToCastSpell(pVictim, m_spells.warlock.pDeathCoil))
