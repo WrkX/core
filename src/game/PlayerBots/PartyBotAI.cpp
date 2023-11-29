@@ -2469,6 +2469,14 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
 {
     if (Unit* pVictim = me->GetVictim())
     {
+        if (m_role == ROLE_TANK &&
+            me->GetShapeshiftForm() != FORM_DEFENSIVESTANCE &&
+            CanTryToCastSpell(me, m_spells.warrior.pDefensiveStance))
+        {
+            if (DoCastSpell(me, m_spells.warrior.pDefensiveStance) == SPELL_CAST_OK)
+                return;
+        }
+
         if (pVictim->IsNonMeleeSpellCasted(false, false, true))
         {
             if (m_spells.warrior.pPummel &&
