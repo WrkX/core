@@ -187,6 +187,9 @@ bool PartyBotAI::RunAwayFromTarget(Unit* pEnemy)
 
 bool PartyBotAI::DrinkAndEat()
 {
+    if (GetPartyLeader()->IsInCombat())
+        return false;
+
     if (m_isBuffing)
         return false;
 
