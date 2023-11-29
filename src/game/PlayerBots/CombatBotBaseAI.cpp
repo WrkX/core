@@ -2318,16 +2318,22 @@ void CombatBotBaseAI::SummonPetIfNeeded()
             return;
 
         std::vector<uint32> vSummons;
-        if (me->HasSpell(SPELL_SUMMON_IMP))
-            vSummons.push_back(SPELL_SUMMON_IMP);
-        if (me->HasSpell(SPELL_SUMMON_VOIDWALKER))
-            vSummons.push_back(SPELL_SUMMON_VOIDWALKER);
-        if (me->HasSpell(SPELL_SUMMON_FELHUNTER))
+        if (me->HasSpell(SPELL_SUMMON_FELHUNTER) && !me->GetGroup()->isRaidGroup())
+        {
             vSummons.push_back(SPELL_SUMMON_FELHUNTER);
-        if (me->HasSpell(SPELL_SUMMON_SUCCUBUS))
-            vSummons.push_back(SPELL_SUMMON_SUCCUBUS);
-        if (!vSummons.empty())
             me->CastSpell(me, SelectRandomContainerElement(vSummons), true);
+        }
+        else if (me->HasSpell(SPELL_SUMMON_SUCCUBUS) && !me->GetGroup()->isRaidGroup())
+        {
+            vSummons.push_back(SPELL_SUMMON_SUCCUBUS);
+            me->CastSpell(me, SelectRandomContainerElement(vSummons), true);
+        }
+        else if (me->HasSpell(SPELL_SUMMON_IMP))
+        {
+            vSummons.push_back(SPELL_SUMMON_IMP);
+            me->CastSpell(me, SelectRandomContainerElement(vSummons), true);
+        }
+            
     }
 }
 
