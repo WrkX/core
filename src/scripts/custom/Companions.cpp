@@ -1,5 +1,6 @@
 #include "Chat.h"
 #include "Chat.h"
+#include "Chat.h"
 #include "PartyBotAI.h"
 #include "Chat.h"
 #include "Companions.h"
@@ -173,7 +174,7 @@ bool loadCompanion(std::string companionname, bool newCompanion, CombatBotRoles 
     float x, y, z;
     pPlayer->GetNearPoint(pPlayer, x, y, z, 0, 5.0f, frand(0.0f, 6.0f));
     if (newCompanion == false)
-        pAI = new PartyBotAI(pPlayer, pPlayer->GetMapId(), pPlayer->GetMap()->GetInstanceId(), x, y, z, pPlayer->GetOrientation());
+        pAI = new PartyBotAI(pPlayer, pPlayer->GetMapId(), role, pPlayer->GetMap()->GetInstanceId(), x, y, z, pPlayer->GetOrientation());
     else
         pAI = new PartyBotAI(pPlayer, pPlayer->GetMapId(), role, playerLevel, pPlayer->GetMap()->GetInstanceId(), x, y, z, pPlayer->GetOrientation());
 
