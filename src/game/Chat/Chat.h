@@ -284,6 +284,7 @@ class ChatHandler
         bool HandleBattleBotShowAllPathsCommand(char* args);
 
         //companions
+        bool IsTargetCompanion(Player* pTarget);
         bool HandleCompanionEquipCommand(char* args);
         bool HandleCompanionListEquipCommand(char* args);
         bool HandleCompanionDeleteItem(char* args);

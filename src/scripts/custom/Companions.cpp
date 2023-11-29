@@ -297,6 +297,24 @@ bool canGetNewCompanion(uint32 charguid)
     return false;
 }
 
+bool ChatHandler::IsTargetCompanion(Player* pTarget)
+{
+    if (!pTarget)
+    {
+        SendSysMessage("No target selected.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (!pTarget->AI())
+    {
+        SendSysMessage("Target is no Companion.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+    return true;
+}
+
 void PartyBotAI::findItemsInInv(std::list<uint32>& itemIdSearchList, std::list<Item*>& foundItemList) const
 {
 
@@ -447,23 +465,11 @@ bool ChatHandler::HandleCompanionEquipCommand(char* args)
     }
 
     Player* pTarget = GetSelectedPlayer();
-    if (!pTarget)
-    {
-        SendSysMessage("No target selected.");
-        SetSentErrorMessage(true);
+    if (!IsTargetCompanion(pTarget))
         return false;
-    }
-
-    if (!pTarget->AI())
-    {
-        SendSysMessage("Target is no Companion.");
-        SetSentErrorMessage(true);
-    }
 
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
-        
-
         std::list<uint32> itemIds;
         std::list<Item*> itemList;
 
@@ -472,6 +478,7 @@ bool ChatHandler::HandleCompanionEquipCommand(char* args)
         for (std::list<Item*>::iterator it = itemList.begin(); it != itemList.end(); ++it)
             pAI->EquipItem(*it);
     }
+    return false;
 }
    
 void PartyBotAI::SendCompanionEquipList()
@@ -577,23 +584,15 @@ void PartyBotAI::SendCompanionEquipList()
 bool ChatHandler::HandleCompanionListEquipCommand(char* args)
 {
     Player* pTarget = GetSelectedPlayer();
-    if (!pTarget)
-    {
-        SendSysMessage("No target selected.");
-        SetSentErrorMessage(true);
+    if (!IsTargetCompanion(pTarget))
         return false;
-    }
-
-    if (!pTarget->AI())
-    {
-        SendSysMessage("Target is no Companion.");
-        SetSentErrorMessage(true);
-    }
 
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
         pAI->SendCompanionEquipList();
+        return true;
     }
+    return false;
 }
 
 Item* PartyBotAI::FindItem(uint32 ItemId)
@@ -668,18 +667,8 @@ bool ChatHandler::HandleCompanionDeleteItem(char* args)
     }
 
     Player* pTarget = GetSelectedPlayer();
-    if (!pTarget)
-    {
-        SendSysMessage("No target selected.");
-        SetSentErrorMessage(true);
+    if (!IsTargetCompanion(pTarget))
         return false;
-    }
-
-    if (!pTarget->AI())
-    {
-        SendSysMessage("Target is no Companion.");
-        SetSentErrorMessage(true);
-    }
 
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
@@ -689,26 +678,18 @@ bool ChatHandler::HandleCompanionDeleteItem(char* args)
         {
             pTarget->DestroyItemCount(itemId, 1, true, false, true);
             pTarget->SaveInventoryAndGoldToDB();
+            return true;
         }
+        return false;
     }
+    return false;
 }
 
 bool ChatHandler::HandleCompanionDeleteEverything(char* args)
 {
-
     Player* pTarget = GetSelectedPlayer();
-    if (!pTarget)
-    {
-        SendSysMessage("No target selected.");
-        SetSentErrorMessage(true);
+    if (!IsTargetCompanion(pTarget))
         return false;
-    }
-
-    if (!pTarget->AI())
-    {
-        SendSysMessage("Target is no Companion.");
-        SetSentErrorMessage(true);
-    }
 
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
@@ -744,4 +725,5 @@ bool ChatHandler::HandleCompanionDeleteEverything(char* args)
         
     }
     pTarget->SaveInventoryAndGoldToDB();
+    return true;
 }
