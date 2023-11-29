@@ -727,3 +727,63 @@ bool ChatHandler::HandleCompanionDeleteEverything(char* args)
     pTarget->SaveInventoryAndGoldToDB();
     return true;
 }
+
+bool ChatHandler::HandleCompanionJoinCommand(char* args)
+{
+    Player* pPlayer = m_session->GetPlayer();
+    Group* pGroup = pPlayer->GetGroup();
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Player* pMember = itr->getSource())
+        {
+            if (!IsTargetCompanion(pMember))
+                continue;
+            
+            if (pMember->AI())
+            {
+                if (!loadBotFromMenu(pPlayer, pMember->GetGUIDLow()))
+                    continue;
+            }
+        }
+    }
+    return true;
+}
+
+bool ChatHandler::HandleCompanionTellRoleCommmand(char* args)
+{
+    Player* pPlayer = m_session->GetPlayer();
+    Group* pGroup = pPlayer->GetGroup();
+
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Player* pMember = itr->getSource())
+        {
+            if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
+            {
+                uint8 role = static_cast<uint8>(pAI->m_role);
+                std::string roleString;
+                std::string botname(pMember->GetName());
+                switch (role)
+                {
+                case 0:
+                    PSendSysMessage("%s is Role: Invalid", botname);
+                    break;
+                case 1:
+                    PSendSysMessage("%s is Role: Meele DPS", botname);
+                    break;
+                case 2:
+                    PSendSysMessage("%s is Role: Range DPS", botname);
+                    break;
+                case 3:
+                    PSendSysMessage("%s is Role: Tank", botname);
+                    break;
+                case 4:
+                    PSendSysMessage("%s is Role: Healer", botname);
+                    break;
+                }
+                SetSentErrorMessage(true);
+            }
+        }
+    }
+    return true;    
+}
