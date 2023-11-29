@@ -42,8 +42,6 @@ enum PartyBotSpells
     PB_SPELL_SHOOT_WAND = 5019,
     PB_SPELL_HONORLESS_TARGET = 2479,
 };
-// TODO: MAKE MODIFIABLE
-uint32 m_resTimer = 15000;
 
 #define PB_UPDATE_INTERVAL 1000
 #define PB_MIN_FOLLOW_DIST 3.0f
@@ -259,33 +257,39 @@ bool PartyBotAI::ShouldAutoRevive(Player* leader) const
                 return false;
 
             if (pMember->GetDeathState() == DEAD &&
-                pMember == leader)
+                pMember == leader &&
+                !pMember->AI())
             {
-                me->BuildPlayerRepop();
-                me->RepopAtGraveyard();
+                pMember->handleGroupRevive = true;
             }
 
-            if (pMember->IsAlive())
+            if (pMember->IsAlive() && !pMember->AI())
             {
                 ChatHandler ch(pMember);
+                if (pMember->GetHandleGroupRevive()) {
+                    ch.HandleGroupgoCommand("");
+                    ch.HandleGroupReviveCommand("");
+                    pMember->handleGroupRevive = false;
+                }
+
                 if (IsHealerClass(pMember->GetClass()))
                     return false;
 
                 if (me->IsWithinDistInMap(pMember, 5.0f))
                 {
                     std::string botname(me->GetName());
-                    uint16 resTime = (uint16)m_resTimer/1000;
+                    uint16 resTime = me->getResTime()/1000;
                     ch.PSendSysMessage("%s will be ressurected in %u.", botname, resTime-1);
                     ch.SetSentErrorMessage(true);
-                    m_resTimer -= 1000;
-                    if (m_resTimer <= 0)
+                    me->UpdateResTime(1000);
+                    if (me->getResTime() <= 0)
                     {
-                        m_resTimer = 15000;
+                        me->SetResTime(15000);
                         return true;
                     }
                 }
                 else
-                    m_resTimer = 15000;
+                    me->SetResTime(15000);
             }
         }
     }
@@ -776,18 +780,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             }
         }
         else
-        {
-            if (me->GetDeathState() == DEAD)
-            {
-
-                me->GetMotionMaster()->MoveFollow(pLeader, urand(PB_MIN_FOLLOW_DIST, PB_MAX_FOLLOW_DIST), frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE));
-                if (pLeader->GetDeathState() == ALIVE)
-                    {
-                    me->TeleportTo(pLeader->GetMapId(), pLeader->GetPosition().x, pLeader->GetPosition().y, pLeader->GetPosition().z, pLeader->GetPosition().o);
-                    }
-                return;
-            }
-               
+        {           
             if (ShouldAutoRevive(pLeader))
             {
                 me->ResurrectPlayer(0.5f);

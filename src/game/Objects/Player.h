@@ -988,7 +988,15 @@ class Player final: public Unit
             else if (state > 0)
                 m_ExtraFlags |= PLAYER_EXTRA_AUCTION_NEUTRAL;
         }
-
+        // companions
+        // TODO MAKE MODIFIABLE
+        bool handleGroupRevive = false;
+        bool GetHandleGroupRevive() { return handleGroupRevive; }
+        void SetHandleGroupRevive(bool shouldDoIt) { handleGroupRevive = shouldDoIt; }
+        uint32 m_resTimer = 15000;
+        uint32 getResTime() { return m_resTimer; }
+        void SetResTime(uint32 newTime) { m_resTimer = newTime;  }
+        void UpdateResTime(uint32 newTime) { m_resTimer -= newTime; }
         /*********************************************************/
         /***                 GAMEMASTER SYSTEM                 ***/
         /*********************************************************/
