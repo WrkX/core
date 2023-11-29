@@ -16,7 +16,6 @@ bool loadBotFromMenu(Player* player,uint32 ccGuid)
     std::string ccName = bot[0].GetString();
     uint8 ccRole = bot[1].GetUInt8();
     CombatBotRoles role = static_cast<CombatBotRoles>(ccRole);
-    //char* companionName = &*ccName.begin();
 
     loadCompanion(ccName, false, role, player);
     return true;
