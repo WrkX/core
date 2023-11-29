@@ -1302,6 +1302,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "delall",         SEC_PLAYER,         false, &ChatHandler::HandleCompanionDeleteEverything,  "", nullptr },
         { "cjoin",          SEC_PLAYER,         false, &ChatHandler::HandleCompanionJoinCommand,  "", nullptr },
         { "crole",          SEC_PLAYER,         false, &ChatHandler::HandleCompanionTellRoleCommmand,  "", nullptr },
+        { "dpspause",       SEC_PLAYER,         false, &ChatHandler::HandleCompanionDPSPause,  "", nullptr },
         { "wareffort",      SEC_DEVELOPER,      true, nullptr,                                         "", warEffortCommandTable },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };

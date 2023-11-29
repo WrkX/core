@@ -786,3 +786,62 @@ bool ChatHandler::HandleCompanionTellRoleCommmand(char* args)
     }
     return true;    
 }
+
+bool ChatHandler::HandleCompanionDPSPause(char* args)
+{
+    int32 duration = 0;
+    if (*args)
+    {
+        if (!ExtractInt32(&args, duration))
+        {
+            return false;
+        }
+    }
+    if (duration == 0)
+        duration = 5;
+
+    duration = duration * IN_MILLISECONDS;
+
+    Player* pPlayer = GetSession()->GetPlayer();
+    Group* pGroup = pPlayer->GetGroup();
+    if (!pGroup)
+    {
+        SendSysMessage("You are not in a group.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    bool success = false;
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Player* pMember = itr->getSource())
+        {
+            if (pMember == pPlayer)
+                continue;
+            if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
+            {
+                if (pAI->GetRole() == ROLE_TANK || pAI->GetRole() == ROLE_HEALER)
+                    continue;
+
+                pAI->m_updateTimer.Reset(duration);
+
+                if (duration)
+                {
+                    pMember->StopMoving();
+                    pMember->GetMotionMaster()->MoveIdle();
+
+                }
+            }
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        PSendSysMessage("All DPS Companion paused for %u seconds.", (duration / IN_MILLISECONDS));
+    }
+    else
+        SendSysMessage("No party bots in group.");
+
+    return true;
+}
