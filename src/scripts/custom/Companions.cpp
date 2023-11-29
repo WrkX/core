@@ -21,45 +21,6 @@ bool loadBotFromMenu(Player* player,uint32 ccGuid)
     return true;
 }
 
-bool loadExistingBot(Player* player, CombatBotRoles companionRole, uint8 companionClass)
-{
-    const char* playername = player->GetName();
-
-    uint32 charGuid = sObjectMgr.GetPlayerGuidByName(playername);
-
-    if (!charGuid)
-    {
-        return false;
-    }
-
-    QueryResult* result = CharacterDatabase.PQuery("SELECT companion_characters_guid, class, role FROM characters_companions WHERE characters_guid = %u and class = %u", charGuid, companionClass);
-
-    if (result)
-    {
-        //SendSysMessage("Companion Found");
-        //SetSentErrorMessage(true);
-
-        do
-        {
-            uint32 ccGuid;
-            uint8 ccClass, ccRole;
-            Field* cc = result->Fetch();
-            ccGuid = cc[0].GetUInt32();
-            ccClass = cc[1].GetUInt8();
-            ccRole = cc[2].GetUInt8();
-
-            CombatBotRoles roleCasted = static_cast<CombatBotRoles>(ccRole);
-            if (ccClass == companionClass && roleCasted == companionRole)
-            {
-                findExistingCompanion(ccGuid, ccClass, roleCasted, player);
-            }
-        } while (result->NextRow());
-        // needa do things
-        return false;
-    }
-    return false;
-}
-
 bool cancelCompanionContract(Player* pPlayer, uint32 companionGuid)
 {
     QueryResult* result = CharacterDatabase.PQuery("SELECT account from characters where guid = %u", companionGuid);
@@ -106,15 +67,6 @@ bool buyNewCompanionCheck(Player* player, CombatBotRoles companionRole, uint8 co
     }
     
     }
-
-void findExistingCompanion(const uint32& ccGuid, const uint8& ccClass, CombatBotRoles role, Player* player)
-{
-    QueryResult* botresult = CharacterDatabase.PQuery("SELECT name FROM characters WHERE guid = %u and class = %u", ccGuid, ccClass);
-    Field* botname = botresult->Fetch();
-    std::string ccName = botname[0].GetString();
-
-    loadCompanion(ccName, false, role, player);
-}
 
 bool createNewCompanionAccount(uint8 botClass, Player* pPlayer, uint32 playerCharGuid, CombatBotRoles role)
 {
