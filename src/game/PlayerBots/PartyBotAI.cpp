@@ -2712,24 +2712,39 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
 
         if (me->GetPower(POWER_RAGE) > 30)
         {
-            if (m_spells.warrior.pCleave && me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1)
-            {
-                if (CanTryToCastSpell(pVictim, m_spells.warrior.pCleave))
-                {
-                    if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-            else
-            {
-                if (m_spells.warrior.pHeroicStrike &&
-                    CanTryToCastSpell(pVictim, m_spells.warrior.pHeroicStrike))
-                {
-                    if (DoCastSpell(pVictim, m_spells.warrior.pHeroicStrike) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-        }
+            
+            if (m_spells.warrior.pCleave && 
+				me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1)
+			{
+
+				std::list<Unit*> targets;
+				me->GetEnemyListInRadiusAround(pVictim, 10.0f, targets);
+				bool breaksCC = false;
+
+				for (auto const& pEnemy : targets)
+				{
+					if (pEnemy->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
+					{
+						breaksCC = true;
+					}
+				}
+
+				if (CanTryToCastSpell(pVictim, m_spells.warrior.pCleave) && !breaksCC)
+				{
+					if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
+						return;
+				}
+			}
+			else
+			{
+				if (m_spells.warrior.pHeroicStrike &&
+					CanTryToCastSpell(pVictim, m_spells.warrior.pHeroicStrike))
+				{
+					if (DoCastSpell(pVictim, m_spells.warrior.pHeroicStrike) == SPELL_CAST_OK)
+						return;
+				}
+			}
+		}
     }
     else // no victim
     {
