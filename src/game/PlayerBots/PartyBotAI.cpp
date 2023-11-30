@@ -3093,21 +3093,29 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         }
     }
 
-/* 
     if (m_spells.druid.pThorns)
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.druid.pThorns))
         {
-            if (CanTryToCastSpell(pTarget, m_spells.druid.pThorns))
+            if (pTarget->AI())
             {
-                if (DoCastSpell(pTarget, m_spells.druid.pThorns) == SPELL_CAST_OK)
+                if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
                 {
-                    m_isBuffing = true;
-                    return;
+                    if (pAI->GetRole() == ROLE_TANK)
+                    {
+                        if (CanTryToCastSpell(pTarget, m_spells.druid.pThorns))
+                        {
+                            if (DoCastSpell(pTarget, m_spells.druid.pThorns) == SPELL_CAST_OK)
+                            {
+                                m_isBuffing = true;
+                                return;
+                            }
+                        }
+                    }
                 }
             }
         }
-    }*/
+    }
 
     if (m_spells.druid.pNaturesGrasp &&
         CanTryToCastSpell(me, m_spells.druid.pNaturesGrasp))
@@ -3145,6 +3153,9 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
 void PartyBotAI::UpdateInCombatAI_Druid()
 {
     ShapeshiftForm const form = me->GetShapeshiftForm();
+
+    if (m_role == ROLE_TANK && form != FORM_BEAR)
+        EnterCombatDruidForm();
 
     if (m_spells.druid.pBarkskin &&
         (form == FORM_NONE || form == FORM_MOONKIN) &&
