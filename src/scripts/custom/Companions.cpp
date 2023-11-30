@@ -1,10 +1,9 @@
 #include "Chat.h"
-#include "Chat.h"
-#include "Chat.h"
 #include "PartyBotAI.h"
 #include "Chat.h"
 #include "Companions.h"
 #include "Bag.h"
+#include "PlayerBotMgr.h"
 
 WorldSession* m_session;
 
@@ -727,25 +726,115 @@ bool ChatHandler::HandleCompanionDeleteEverything(char* args)
     return true;
 }
 
+bool CompanionComeToMeHelper(Player* pBot, Player* pPlayer, uint8 mode)
+{
+    ChatHandler ch(pPlayer);
+    if (pBot->AI() && pBot->IsAlive() && pBot->IsInMap(pPlayer) && !pBot->HasUnitState(UNIT_STAT_NO_FREE_MOVE))
+    {
+        if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pBot->AI()))
+        {
+            // mode 0 = all, 1 all but tanks, 2 all ranged + healer
+            if (mode == 1)
+            {
+                ch.SendSysMessage("mode 1");
+                if (pAI->GetRole() == ROLE_TANK)
+                {
+                    ch.SendSysMessage("found tank");
+                    return false;
+                }
+            }
+            else if (mode == 2)
+            {
+                ch.SendSysMessage("mode 2");
+                if (pAI->GetRole() == ROLE_TANK || pAI->GetRole() == ROLE_MELEE_DPS)
+                {
+                    ch.SendSysMessage("found tank or meele");
+                    return false;
+                }
+            }
+            if (pBot->GetVictim())
+            {
+                pBot->AttackStop(true);
+                pBot->InterruptNonMeleeSpells(false);
+                if (!pBot->IsStopped())
+                    pBot->StopMoving();
+                if (pBot->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
+                    pBot->GetMotionMaster()->Clear();
+                if (pAI->m_updateTimer.GetExpiry() < 3000)
+                    pAI->m_updateTimer.Reset(3000);
+            }
+
+            if (pBot->GetStandState() != UNIT_STAND_STATE_STAND)
+                pBot->SetStandState(UNIT_STAND_STATE_STAND);
+
+            pBot->InterruptSpellsWithInterruptFlags(SPELL_INTERRUPT_FLAG_MOVEMENT);
+            pBot->MonsterMove(pPlayer->GetPositionX(), pPlayer->GetPositionY(), pPlayer->GetPositionZ());
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ChatHandler::HandleCompanionComeCommand(char* args)
+{
+    Player* pPlayer = GetSession()->GetPlayer();
+    bool success = false;
+
+    int32 mode = 0;
+     if (*args)
+    {
+        if (!ExtractInt32(&args, mode))
+        {
+            return false;
+        }
+    }
+    if (mode > 2)
+        mode = 2;
+
+    if (Group* pGroup = pPlayer->GetGroup())
+    {
+        for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+        {
+            if (Player* pMember = itr->getSource())
+            {
+                if (pMember == pPlayer)
+                    continue;
+                CompanionComeToMeHelper(pMember, pPlayer, mode);
+                success = true;
+            }
+        }
+
+        if (success && mode == 0)
+            SendSysMessage("All companions are coming to your position.");
+        else if (success && mode == 1)
+            SendSysMessage("All meele and ranged companions are coming to your position.");
+        else if (success && mode == 2)
+            SendSysMessage("All ranged companions are coming to your position.");
+        else
+            SendSysMessage("There are no party bots in the group or they cannot move.");
+        return success;
+    }
+
+    SendSysMessage("You are not in a group.");
+    SetSentErrorMessage(true);
+    return false;
+}
+
 bool ChatHandler::HandleCompanionJoinCommand(char* args)
 {
     Player* pPlayer = m_session->GetPlayer();
-    Group* pGroup = pPlayer->GetGroup();
-    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
-    {
-        if (Player* pMember = itr->getSource())
+    Player* pTarget = GetSelectedPlayer();
+
+    if (!IsTargetCompanion(pTarget))
+        return false;
+    
+    if (pTarget->AI())
         {
-            if (!IsTargetCompanion(pMember))
-                continue;
-            
-            if (pMember->AI())
-            {
-                if (!loadBotFromMenu(pPlayer, pMember->GetGUIDLow()))
-                    continue;
-            }
+            loadBotFromMenu(pPlayer, pTarget->GetGUIDLow());
         }
-    }
-    return true;
+
+return true;
 }
 
 bool ChatHandler::HandleCompanionTellRoleCommmand(char* args)

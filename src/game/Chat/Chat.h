@@ -289,6 +289,7 @@ class ChatHandler
         bool HandleCompanionListEquipCommand(char* args);
         bool HandleCompanionDeleteItem(char* args);
         bool HandleCompanionDeleteEverything(char* args);
+        bool HandleCompanionComeCommand(char* args);
         bool HandleCompanionJoinCommand(char* args);
         bool HandleCompanionTellRoleCommmand(char* args);
         bool HandleCompanionDPSPause(char* args);
