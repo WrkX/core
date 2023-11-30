@@ -47,6 +47,9 @@ public:
         m_role = role;
         m_leaderGuid = pLeader->GetObjectGuid();
         m_updateTimer.Reset(2000);
+        m_marksToFocus.push_back(RAID_TARGET_ICON_SKULL);
+        m_marksToFocus.push_back(RAID_TARGET_ICON_CROSS);
+        m_marksToCC.push_back(RAID_TARGET_ICON_MOON);
     }
 
     PartyBotAI(Player* pLeader, uint32 mapId, CombatBotRoles role, uint8 level, uint32 instanceId, float x, float y, float z, float o)
@@ -55,6 +58,9 @@ public:
         m_role = role;
         m_leaderGuid = pLeader->GetObjectGuid();
         m_updateTimer.Reset(2000);
+        m_marksToFocus.push_back(RAID_TARGET_ICON_SKULL);
+        m_marksToFocus.push_back(RAID_TARGET_ICON_CROSS);
+        m_marksToCC.push_back(RAID_TARGET_ICON_MOON);
     }
 
     bool OnSessionLoaded(PlayerBotEntry* entry, WorldSession* sess) final;
