@@ -1784,11 +1784,13 @@ void PartyBotAI::UpdateInCombatAI_Mage()
                     {
                         DoCastSpell(me, m_spells.mage.pFrostNova);
                     }
-
-                    if (RunAwayFromTarget(pVictim))
+                    if (me->GetGroup()->isRaidGroup()) 
                     {
-                        me->SetCasterChaseDistance(25.0f);
-                        return;
+                        if (RunAwayFromTarget(pVictim))
+                        {
+                            me->SetCasterChaseDistance(25.0f);
+                            return;
+                        }
                     }
                 }
             }
@@ -3401,8 +3403,14 @@ void PartyBotAI::UpdateInCombatAI_Druid()
                         return;
                 }
                 me->SetCasterChaseDistance(25.0f);
-                if (RunAwayFromTarget(pVictim))
-                    return;
+                if (me->GetGroup()->isRaidGroup())
+                {
+                    if (RunAwayFromTarget(pVictim))
+                    {
+                        me->SetCasterChaseDistance(25.0f);
+                        return;
+                    }
+                }
             }
 
             if (m_spells.druid.pFaerieFire &&
