@@ -401,6 +401,13 @@ Unit* PartyBotAI::GetMarkedTarget(RaidTargetIcon mark) const
 
 Unit* PartyBotAI::SelectAttackTarget(Player* pLeader) const
 {
+
+    if (m_role == ROLE_TANK)
+    {
+        if (Unit* pPartyAttacker = SelectPartyAttackTarget())
+            return pPartyAttacker;
+    }
+
     if (IsInDuel())
     {
         if (me->duel->opponent && IsValidHostileTarget(me->duel->opponent))
@@ -880,7 +887,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
 
     if (GetRole() != ROLE_HEALER)
     {
-        if (!pVictim || !IsValidHostileTarget(pVictim))
+        if (!pVictim || !IsValidHostileTarget(pVictim) || pVictim != SelectAttackTarget(pLeader))
         {
             if (pVictim)
                 me->AttackStop();
