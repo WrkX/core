@@ -308,9 +308,6 @@ bool PartyBotAI::CanTryToCastSpell(Unit const* pTarget, SpellEntry const* pSpell
 
     if (pSpellEntry->IsAreaOfEffectSpell() && !pSpellEntry->IsPositiveSpell() && !IsInDuel())
     {
-        if (!m_marksToCC.empty())
-            return false;
-
         // do not cast aoe if it will pull aggro
         if (m_role != ROLE_TANK)
         {
@@ -1263,6 +1260,7 @@ void PartyBotAI::UpdateInCombatAI_Paladin()
             }
             if (m_spells.paladin.pConsecration &&
                (GetAttackersInRangeCount(10.0f) > 2) &&
+                !BreakableCCNearby(me,10.0f) &&
                 CanTryToCastSpell(me, m_spells.paladin.pConsecration))
             {
                 if (DoCastSpell(me, m_spells.paladin.pConsecration) == SPELL_CAST_OK)
@@ -1394,6 +1392,7 @@ void PartyBotAI::UpdateInCombatAI_Shaman()
             }
 
             if (m_spells.shaman.pChainLightning &&
+                !BreakableCCNearby(pVictim,15.0f) &&
                 CanTryToCastSpell(pVictim, m_spells.shaman.pChainLightning))
             {
                 if (DoCastSpell(pVictim, m_spells.shaman.pChainLightning) == SPELL_CAST_OK)
@@ -1520,6 +1519,7 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
 
         if (m_spells.hunter.pVolley &&
            (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
+            !BreakableCCNearby(pVictim,10.0f) &&
             CanTryToCastSpell(pVictim, m_spells.hunter.pVolley))
         {
             if (DoCastSpell(pVictim, m_spells.hunter.pVolley) == SPELL_CAST_OK)
@@ -1568,6 +1568,7 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
         }
 
         if (m_spells.hunter.pMultiShot &&
+            !BreakableCCNearby(pVictim, 15.0f) &&
             CanTryToCastSpell(pVictim, m_spells.hunter.pMultiShot))
         {
             me->StopMoving();
@@ -1799,7 +1800,8 @@ void PartyBotAI::UpdateInCombatAI_Mage()
             }
         }
 
-        if (me->GetEnemyCountInRadiusAround(me, 10.0f) > 1)
+        if (me->GetEnemyCountInRadiusAround(me, 10.0f) > 1 &&
+            !BreakableCCNearby(pVictim, 10.0f))
         {
             if (m_spells.mage.pConeofCold && !me->IsMoving() &&
                 CanTryToCastSpell(me, m_spells.mage.pConeofCold))
@@ -1816,6 +1818,7 @@ void PartyBotAI::UpdateInCombatAI_Mage()
             }
 
             if (m_spells.mage.pArcaneExplosion &&
+                !BreakableCCNearby(me, 15.0f) &&
                 CanTryToCastSpell(me, m_spells.mage.pArcaneExplosion))
             {
                 if (DoCastSpell(me, m_spells.mage.pArcaneExplosion) == SPELL_CAST_OK)
@@ -1838,6 +1841,7 @@ void PartyBotAI::UpdateInCombatAI_Mage()
 
         if (m_spells.mage.pBlizzard &&
            (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
+            !BreakableCCNearby(pVictim,10.0f) &&
             CanTryToCastSpell(pVictim, m_spells.mage.pBlizzard))
         {
             if (DoCastSpell(pVictim, m_spells.mage.pBlizzard) == SPELL_CAST_OK)
@@ -2032,6 +2036,18 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
         }
     }
 
+    if (m_spells.priest.pAbolishDisease)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pAbolishDisease))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.priest.pAbolishDisease))
+            {
+                if (DoCastSpell(pFriend, m_spells.priest.pAbolishDisease) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
+
     if (m_role == ROLE_HEALER &&
         FindAndHealInjuredAlly())
         return;
@@ -2211,6 +2227,7 @@ void PartyBotAI::UpdateInCombatAI_Priest()
         {
             if (m_spells.priest.pHolyNova &&
                 GetAttackersInRangeCount(10.0f) > 2 &&
+                !BreakableCCNearby(me, 10.0f) &&
                 CanTryToCastSpell(me, m_spells.priest.pHolyNova))
             {
                 if (DoCastSpell(me, m_spells.priest.pHolyNova) == SPELL_CAST_OK)
@@ -2335,6 +2352,7 @@ void PartyBotAI::UpdateInCombatAI_Warlock()
 
         if (m_spells.warlock.pRainOfFire &&
            (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
+            !BreakableCCNearby(pVictim, 10.0f) &&
             CanTryToCastSpell(pVictim, m_spells.warlock.pRainOfFire))
         {
             if (DoCastSpell(pVictim, m_spells.warlock.pRainOfFire) == SPELL_CAST_OK)
@@ -2569,10 +2587,14 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
 
         if (m_spells.warrior.pThunderClap &&
             m_role == ROLE_TANK &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap))
+            CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap)&&
+            !BreakableCCNearby(pVictim,10.0f))
         {
-            if (DoCastSpell(pVictim, m_spells.warrior.pThunderClap) == SPELL_CAST_OK)
-                return;
+            if (DoCastSpell(me, m_spells.warrior.pDefensiveStance) == SPELL_CAST_OK) {
+                if (DoCastSpell(pVictim, m_spells.warrior.pThunderClap) == SPELL_CAST_OK)
+                    return;
+            }
+            
         }
 
         if (m_spells.warrior.pSunderArmor &&
@@ -2685,7 +2707,8 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
         }
 
         if (m_spells.warrior.pWhirlwind &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind))
+            CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind)&&
+            !BreakableCCNearby(pVictim, 15.0f))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pWhirlwind) == SPELL_CAST_OK)
                 return;
@@ -2719,20 +2742,7 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             if (m_spells.warrior.pCleave && 
 				me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1)
 			{
-
-				std::list<Unit*> targets;
-				me->GetEnemyListInRadiusAround(pVictim, 10.0f, targets);
-				bool breaksCC = false;
-
-				for (auto const& pEnemy : targets)
-				{
-					if (pEnemy->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
-					{
-						breaksCC = true;
-					}
-				}
-
-				if (CanTryToCastSpell(pVictim, m_spells.warrior.pCleave) && !breaksCC)
+				if (CanTryToCastSpell(pVictim, m_spells.warrior.pCleave) && !BreakableCCNearby(pVictim, 15.0f))
 				{
 					if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
 						return;
@@ -3379,29 +3389,30 @@ void PartyBotAI::UpdateInCombatAI_Druid()
                     return;
             }
 
+
+            if ((me->GetPower(POWER_RAGE) > 80) &&
+                m_spells.druid.pDemoralizingRoar &&
+                CanTryToCastSpell(pVictim, m_spells.druid.pDemoralizingRoar))
+            {
+                if (DoCastSpell(pVictim, m_spells.druid.pDemoralizingRoar) == SPELL_CAST_OK)
+                    return;
+            }
+
+            if ((GetAttackersInRangeCount(15.0f) > 1) &&
+                m_spells.druid.pSwipe &&
+                !BreakableCCNearby(me,10.0f) &&
+                CanTryToCastSpell(pVictim, m_spells.druid.pSwipe))
+            {
+                if (DoCastSpell(pVictim, m_spells.druid.pSwipe) == SPELL_CAST_OK)
+                    return;
+            }
+
+
             if (m_spells.druid.pFaerieFireFeral &&
                 CanTryToCastSpell(pVictim, m_spells.druid.pFaerieFireFeral))
             {
                 if (DoCastSpell(pVictim, m_spells.druid.pFaerieFireFeral) == SPELL_CAST_OK)
                     return;
-            }
-
-            if ((me->GetPower(POWER_RAGE) > 80) ||
-                (GetAttackersInRangeCount(10.0f) > 1))
-            {
-                if (m_spells.druid.pDemoralizingRoar &&
-                    CanTryToCastSpell(pVictim, m_spells.druid.pDemoralizingRoar))
-                {
-                    if (DoCastSpell(pVictim, m_spells.druid.pDemoralizingRoar) == SPELL_CAST_OK)
-                        return;
-                }
-
-                if (m_spells.druid.pSwipe &&
-                    CanTryToCastSpell(pVictim, m_spells.druid.pSwipe))
-                {
-                    if (DoCastSpell(pVictim, m_spells.druid.pSwipe) == SPELL_CAST_OK)
-                        return;
-                }
             }
 
             if (m_spells.druid.pMaul &&
@@ -3420,27 +3431,27 @@ void PartyBotAI::UpdateInCombatAI_Druid()
             {
                 me->GetMotionMaster()->MoveChase(pVictim, 25.0f);
             }
-            else if (pVictim->CanReachWithMeleeAutoAttack(me) &&
-                    (pVictim->GetVictim() == me) &&
-                    !me->HasUnitState(UNIT_STAT_ROOT) &&
-                    (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != DISTANCING_MOTION_TYPE))
-            {
-                if (m_spells.druid.pEntanglingRoots &&
-                    CanTryToCastSpell(pVictim, m_spells.druid.pEntanglingRoots))
-                {
-                    if (DoCastSpell(pVictim, m_spells.druid.pEntanglingRoots) == SPELL_CAST_OK)
-                        return;
-                }
-                me->SetCasterChaseDistance(25.0f);
-                if (me->GetGroup()->isRaidGroup())
-                {
-                    if (RunAwayFromTarget(pVictim))
-                    {
-                        me->SetCasterChaseDistance(25.0f);
-                        return;
-                    }
-                }
-            }
+			else if (pVictim->CanReachWithMeleeAutoAttack(me) &&
+				(pVictim->GetVictim() == me) &&
+				!me->HasUnitState(UNIT_STAT_ROOT) &&
+				(me->GetMotionMaster()->GetCurrentMovementGeneratorType() != DISTANCING_MOTION_TYPE))
+			{
+				if (m_spells.druid.pEntanglingRoots &&
+					CanTryToCastSpell(pVictim, m_spells.druid.pEntanglingRoots))
+				{
+					if (DoCastSpell(pVictim, m_spells.druid.pEntanglingRoots) == SPELL_CAST_OK)
+						return;
+				}
+				me->SetCasterChaseDistance(25.0f);
+				if (me->GetGroup()->isRaidGroup())
+				{
+					if (RunAwayFromTarget(pVictim))
+					{
+						me->SetCasterChaseDistance(25.0f);
+						return;
+					}
+				}
+			}
 
             if (m_spells.druid.pFaerieFire &&
                (pVictim->GetClass() == CLASS_ROGUE) &&
@@ -3462,6 +3473,7 @@ void PartyBotAI::UpdateInCombatAI_Druid()
 
             if (m_spells.druid.pHurricane &&
                (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
+                !BreakableCCNearby(pVictim, 10.0f) &&
                 CanTryToCastSpell(pVictim, m_spells.druid.pHurricane))
             {
                 if (DoCastSpell(pVictim, m_spells.druid.pHurricane) == SPELL_CAST_OK)
@@ -3516,4 +3528,21 @@ bool PartyBotAI::shouldTankUseMassTaunt()
      return false;
 }
 
+bool PartyBotAI::BreakableCCNearby(Unit* pVictim, float range)
+{
+    std::list<Unit*> targets;
+    me->GetEnemyListInRadiusAround(pVictim, range, targets);
+    bool breaksCC = false;
+
+    for (auto const& pEnemy : targets)
+    {
+        if (pEnemy->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
+        {
+            breaksCC = true;
+        }
+    }
+
+    if (breaksCC)
+        return true;
+    return false;
 }

@@ -132,6 +132,8 @@ public:
     Item* FindItem(uint32 ItemId);
     bool partybotIsInRaid(Player* player);
     void moltenCoreTactics(Player* bot);
+    bool shouldTankUseMassTaunt();
+    bool BreakableCCNearby(Unit* pVictim, float range);
 };
 
 #endif
