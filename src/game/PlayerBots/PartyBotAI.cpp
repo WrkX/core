@@ -1028,6 +1028,9 @@ void PartyBotAI::UpdateInCombatAI()
                 {
                     if (CanTryToCastSpell(pVictim, pSpellEntry))
                     {
+                        // Skip Mass Taunts if not needed
+                        if ((pSpellEntry == m_spells.warrior.pChallengingShout || pSpellEntry == m_spells.druid.pChallengingRoar) && !shouldTankUseMassTaunt())
+                            continue;
                         if (DoCastSpell(pVictim, pSpellEntry) == SPELL_CAST_OK)
                             return;
                     }
@@ -3490,4 +3493,27 @@ void PartyBotAI::UpdateInCombatAI_Druid()
             break;
         }
     }
+}
+
+bool PartyBotAI::shouldTankUseMassTaunt()
+{
+    std::list<Unit*> targets;
+    me->GetEnemyListInRadiusAround(me, 15.0f, targets);
+    uint8 i = 0;
+
+    for (auto const& pEnemy : targets)
+    {
+        if (pEnemy->GetVictim()!= me)
+        {
+            ++i;
+        }
+    }
+    
+    if (i > 2)
+    {
+        return true;
+    }
+     return false;
+}
+
 }

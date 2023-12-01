@@ -469,6 +469,7 @@ public:
             SpellEntry const* pSunderArmor;
             SpellEntry const* pConcussionBlow;
             SpellEntry const* pPiercingHowl;
+            SpellEntry const* pChallengingShout;
         } warrior;
         struct
         {

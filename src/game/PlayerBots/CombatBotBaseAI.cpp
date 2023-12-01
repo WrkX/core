@@ -1060,6 +1060,11 @@ void CombatBotBaseAI::PopulateSpellData()
                     if (IsHigherRankSpell(m_spells.warrior.pBattleStance))
                         m_spells.warrior.pBattleStance = pSpellEntry;
                 }
+                if (pSpellEntry->SpellName[0].find("Challenging Shout") != std::string::npos)
+                {
+                    if (IsHigherRankSpell(m_spells.warrior.pChallengingShout))
+                        m_spells.warrior.pChallengingShout = pSpellEntry;
+                }
                 else if (pSpellEntry->SpellName[0].find("Berserker Stance") != std::string::npos)
                 {
                     if (IsHigherRankSpell(m_spells.warrior.pBerserkerStance))
