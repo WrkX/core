@@ -268,7 +268,7 @@ bool PartyBotAI::ShouldAutoRevive(Player* leader) const
 
             if (pMember->IsAlive() && !pMember->AI())
             {
-                ChatHandler ch(pMember);
+                ChatHandler ch(leader);
                 if (pMember->GetHandleGroupRevive()) {
                     ch.HandleGroupgoCommand("");
                     ch.HandleGroupReviveCommand("");
@@ -278,7 +278,8 @@ bool PartyBotAI::ShouldAutoRevive(Player* leader) const
                 if (IsHealerClass(pMember->GetClass()))
                     return false;
 
-                if (me->IsWithinDistInMap(pMember, 5.0f))
+                if (me->IsWithinDistInMap(leader, 5.0f) &&
+                    pMember == leader)
                 {
                     std::string botname(me->GetName());
                     uint16 resTime = me->getResTime()/1000;
@@ -639,7 +640,7 @@ void PartyBotAI::OnPlayerLogin()
             
             CharacterDatabase.PExecute("Update characters_companions set initialized = 1 where companion_characters_guid = %u", companionGuid);
         }
-        
+        me->ResurrectPlayer(100, false);
         me->SaveToDB();
     }
 }
