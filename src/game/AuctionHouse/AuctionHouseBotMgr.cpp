@@ -7,6 +7,7 @@
 #include "AuctionHouseBotMgr.h"
 #include "Config/Config.h"
 #include "Chat.h"
+#include <random>
 
 INSTANTIATE_SINGLETON_1(AuctionHouseBotMgr);
 
@@ -160,6 +161,12 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
     item->SetCount(e.stack);
 
     uint32 dep = sAuctionMgr.GetAuctionDeposit(m_auctionHouseEntry, etime, item);
+
+    uint32 newAmountBid = e.bid * 0.8;
+    uint32 newAmountBuyout = e.buyout * 0.8;
+    double randomizer = urand(0, 40) / 100;
+    newAmountBid += newAmountBid * randomizer;
+    newAmountBuyout += newAmountBuyout * randomizer;
 
     AuctionEntry* auctionEntry       = new AuctionEntry;
     auctionEntry->Id                 = sObjectMgr.GenerateAuctionID();
