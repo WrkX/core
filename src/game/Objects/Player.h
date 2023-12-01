@@ -37,6 +37,12 @@
 #include "SpellMgr.h"
 #include "HonorMgr.h"
 
+#ifdef USE_ACHIEVEMENTS
+
+#include "Achievements/AchievementMgr.h"
+
+#endif
+
 #include <string>
 #include <vector>
 #include <functional>
@@ -717,6 +723,11 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_BATTLEGROUND_DATA,
     PLAYER_LOGIN_QUERY_FORGOTTEN_SKILLS,
 
+#ifdef USE_ACHIEVEMENTS
+    PLAYER_LOGIN_QUERY_LOADACHIEVEMENTS,
+    PLAYER_LOGIN_QUERY_LOAD_CRITERIA_PROGRESS,
+#endif
+
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -1017,7 +1028,7 @@ class Player final: public Unit
         void SetPvPDeath(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_PVP_DEATH; else m_ExtraFlags &= ~PLAYER_EXTRA_PVP_DEATH; }
         bool IsGMVisible() const { return !(m_ExtraFlags & PLAYER_EXTRA_GM_INVISIBLE); }
         void SetGMVisible(bool on, bool notify = false);
-        
+
         void SetCheatGod(bool on, bool notify = false);
         bool IsGod() const { return HasCheatOption(PLAYER_CHEAT_GOD); }
         void SetCheatNoCooldown(bool on, bool notify = false);
@@ -1442,7 +1453,7 @@ class Player final: public Unit
         /*********************************************************/
         /***                   SAVE SYSTEM                     ***/
         /*********************************************************/
-        
+
     private:
         void _SaveAuras();
         void _SaveInventory();
@@ -1506,7 +1517,7 @@ class Player final: public Unit
         void UnsummonPetTemporaryIfAny();
         void ResummonPetTemporaryUnSummonedIfAny();
         bool IsPetNeedBeTemporaryUnsummoned() const;
-        
+
         /*********************************************************/
         /***                   SPELL SYSTEM                    ***/
         /*********************************************************/
@@ -1517,9 +1528,11 @@ class Player final: public Unit
         SpellModList m_spellMods[MAX_SPELLMOD];
         uint32 m_lastFromClientCastedSpellID;
         std::map<uint32, ItemSetEffect> m_itemSetEffects;
+
 #if SUPPORTED_CLIENT_BUILD < CLIENT_BUILD_1_6_1
         uint32 m_resurrectionSpellId;
 #endif
+
         bool IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) const;
         void SendInitialSpells() const;
         bool AddSpell(uint32 spellId, bool active, bool learning, bool dependent, bool disabled);
@@ -2034,7 +2047,7 @@ class Player final: public Unit
         /***              ENVIRONMENTAL SYSTEM                 ***/
         /*********************************************************/
 
-    protected: 
+    protected:
         uint8 m_environmentFlags = ENVIRONMENT_FLAG_NONE;
         float m_environmentBreathingMultiplier = 1.0f;
         MirrorTimer m_mirrorTimers[MirrorTimer::NUM_TIMERS] = { MirrorTimer::FATIGUE, MirrorTimer::BREATH, MirrorTimer::FEIGNDEATH, MirrorTimer::ENVIRONMENTAL };
@@ -2104,7 +2117,7 @@ class Player final: public Unit
         /*********************************************************/
         /***                    TAXI SYSTEM                    ***/
         /*********************************************************/
-        
+
     private:
         PlayerTaxi m_taxi;
     public:
@@ -2683,6 +2696,30 @@ class Player final: public Unit
         static uint32 GetRankFromDB(ObjectGuid guid);
         int GetGuildIdInvited() { return m_GuildIdInvited; }
         static void RemovePetitionsAndSigns(ObjectGuid guid, uint32 exceptPetitionId = 0);
+
+#ifdef USE_ACHIEVEMENTS
+public:
+    bool isHonorOrXPTarget(Unit* victim) const;
+    void UpdateAchievementCriteria(AchievementCriteriaTypes type,
+                                       uint32                   miscValue1 = 0,
+                                       uint32                   miscValue2 = 0,
+                                       Unit*                    unit = nullptr);
+
+    void CheckAllAchievementCriteria();
+    void ResetAchievements();
+    void SendRespondInspectAchievements(Player* player) const;
+    bool HasAchieved(uint32 achievementId) const;
+    void StartTimedAchievement(AchievementCriteriaTimedTypes type, uint32 entry, uint32 timeLost = 0);
+    void RemoveTimedAchievement(AchievementCriteriaTimedTypes type, uint32 entry);
+    void ResetAchievementCriteria(AchievementCriteriaCondition condition, uint32 value, bool evenIfCriteriaComplete = false);
+
+    void CompletedAchievement(AchievementEntry const* entry);
+
+    void UpdateLootAchievements(LootItem* item, Loot* loot);
+private:
+    AchievementMgr* m_achievementMgr;
+
+#endif
 };
 
 inline Player* Object::ToPlayer()
@@ -2737,7 +2774,7 @@ template <class T> T Player::ApplySpellMod(uint32 spellId, SpellModOp op, T &bas
 
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_10_2
         // World of Warcraft Client Patch 1.11.0 (2006-06-20)
-        // - Nature's Grace: You will no longer consume this effect when casting a 
+        // - Nature's Grace: You will no longer consume this effect when casting a
         //   spell which was made instant by Nature's Swiftness.
         if (!((mod->op == SPELLMOD_CASTING_TIME) && (mod->type == SPELLMOD_FLAT) && HasInstantCastingSpellMod(spellInfo)))
 #endif

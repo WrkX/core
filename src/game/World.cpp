@@ -82,6 +82,13 @@
 #include "GuardMgr.h"
 #include "TransportMgr.h"
 
+#if USE_ACHIEVEMENTS
+
+#include "Achievements/AchievementMgr.h"
+#include "Achievements/AchievementScriptMgr.h"
+
+#endif
+
 #include <chrono>
 
 INSTANTIATE_SINGLETON_1(World);
@@ -1059,7 +1066,7 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_PACKET_BCAST_THREADS,                  "Network.PacketBroadcast.Threads", 0);
     setConfig(CONFIG_UINT32_PACKET_BCAST_FREQUENCY,                "Network.PacketBroadcast.Frequency", 50);
     setConfig(CONFIG_UINT32_PBCAST_DIFF_LOWER_VISIBILITY_DISTANCE, "Network.PacketBroadcast.ReduceVisDistance.DiffAbove", 0);
-    
+
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "* Anticrash : options 0x%x rearm after %usec", getConfig(CONFIG_UINT32_ANTICRASH_OPTIONS), getConfig(CONFIG_UINT32_ANTICRASH_REARM_TIMER) / 1000);
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "* Pathfinding : [%s]", getConfig(CONFIG_BOOL_MMAP_ENABLED) ? "ON" : "OFF");
 
@@ -1627,6 +1634,27 @@ void World::SetInitialWorldSettings()
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">>> Loot Tables loaded");
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
 
+#ifdef USE_ACHIEVEMENTS
+
+    sAchievementStore.Load();
+    sAchievementCategoryStore.Load();
+    sAchievementCriteriaStore.Load();
+
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "server.loading", "Loading Achievements...");
+    sAchievementMgr->LoadAchievementReferenceList();
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "server.loading", "Loading Achievement Criteria Lists...");
+    sAchievementMgr->LoadAchievementCriteriaList();
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "server.loading", "Loading Achievement Criteria Data...");
+    sAchievementMgr->LoadAchievementCriteriaData();
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "server.loading", "Loading Achievement Rewards...");
+    sAchievementMgr->LoadRewards();
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "server.loading", "Loading Achievement Reward Locales...");
+    sAchievementMgr->LoadRewardLocales();
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "server.loading", "Loading Completed Achievements...");
+    sAchievementMgr->LoadCompletedAchievements();
+
+#endif
+
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Loading Skill Fishing base level requirements...");
     sObjectMgr.LoadFishingBaseSkillLevel();
 
@@ -1724,6 +1752,13 @@ void World::SetInitialWorldSettings()
     sScriptMgr.LoadEventScripts();                          // must be after load Creature/Gameobject(Template/Data)
     sScriptMgr.LoadGenericScripts();
     sScriptMgr.LoadCreatureEventAIScripts();
+
+#ifdef USE_ACHIEVEMENTS
+
+    sAchievementScriptMgr->LoadDatabase();
+
+#endif
+
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">>> Scripts loaded");
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
 
@@ -1736,6 +1771,13 @@ void World::SetInitialWorldSettings()
 
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Initializing Scripts...");
     sScriptMgr.Initialize();
+
+#ifdef USE_ACHIEVEMENTS
+
+    sAchievementScriptMgr->Initialize();
+
+#endif
+
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
 
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Loading aura removal on map change definitions");
@@ -2024,7 +2066,7 @@ void World::Update(uint32 diff)
     std::future<void> job = m_updateThreads->processWorkload(_asyncTasksBusy);
     _asyncTasks.clear();
     lock.unlock();
-    
+
     sMapMgr.Update(diff);
     sBattleGroundMgr.Update(diff);
     sGuardMgr.Update(diff);
@@ -2429,7 +2471,7 @@ class BanQueryHolder : public SqlQueryHolder
 public:
     BanQueryHolder(BanMode mode, std::string banTarget, uint32 duration, std::string reason, uint32 realmId, std::string author,
         uint32 authorAccountId)
-        : m_mode(mode), m_duration(duration), m_reason(reason), m_realmId(realmId), 
+        : m_mode(mode), m_duration(duration), m_reason(reason), m_realmId(realmId),
           m_author(author), m_banTarget(banTarget), m_accountId(authorAccountId)
     {
     }

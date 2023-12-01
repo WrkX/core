@@ -345,8 +345,10 @@ float SpellCaster::MeleeSpellMissChance(Unit* pVictim, WeaponAttackType attType,
             modOwner->ApplySpellMod(spell->Id, SPELLMOD_RESIST_MISS_CHANCE, hitChance, spellPtr);
 
         // Bonuses from attacker aura and ratings
+
         hitChance += pUnit->GetBonusHitChanceFromAuras(attType);
     } 
+
 
     // There is some code in 1.12 that explicitly adds a modifier that causes the first 1% of +hit gained from
     // talents or gear to be ignored against monsters with more than 10 Defense Skill above the attacking players Weapon Skill.
@@ -432,7 +434,7 @@ SpellMissInfo SpellCaster::MeleeSpellHitResult(Unit* pVictim, SpellEntry const* 
     }
     // Check creatures flags_extra for disable parry
     if (Creature* pCreatureVictim = pVictim->ToCreature())
-    { 
+    {
         if (pCreatureVictim->HasExtraFlag(CREATURE_FLAG_EXTRA_NO_PARRY))
             canParry = false;
         if (pCreatureVictim->HasExtraFlag(CREATURE_FLAG_EXTRA_NO_BLOCK))
@@ -555,7 +557,7 @@ int32 SpellCaster::MagicSpellHitChance(Unit* pVictim, SpellEntry const* spell, S
             modOwner->ApplySpellMod(spell->Id, SPELLMOD_RESIST_MISS_CHANCE, modHitChance, spellPtr);
         }
     }
-    
+
     // Chance hit from victim SPELL_AURA_MOD_ATTACKER_SPELL_HIT_CHANCE auras
     modHitChance += pVictim->GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_ATTACKER_SPELL_HIT_CHANCE, schoolMask);
     
@@ -696,7 +698,7 @@ uint32 SpellCaster::SpellCriticalDamageBonus(SpellEntry const* spellProto, uint3
         if (Player* modOwner = pUnit->GetSpellModOwner())
             modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_CRIT_DAMAGE_BONUS, crit_bonus, spell);
     }
-    
+
 
     if (!pVictim)
         return damage += crit_bonus;
@@ -758,6 +760,30 @@ int32 SpellCaster::DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* s
 
     if (IsPlayer() || pVictim->IsPlayer())
         pHealer->SendHealSpellLog(pVictim, spellProto->Id, addhealth, critical);
+
+#ifdef USE_ACHIEVEMENTS
+    // TODO(TsAah): consider config options for optimization and other...
+
+    if (Player* player = ToPlayer()) {
+        // use the actual gain, as the overheal shall not be counted, skip gain 0 (it ignored anyway in to criteria)
+#ifndef USE_ACHIEVEMENTS_ENABLE_ALL
+        if (gain && player->InBattleGround()) // pussywizard: InBattleground() optimization
+#endif
+            player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, gain, 0, pVictim);
+
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEAL_CASTED, addhealth); // pussywizard: optimization
+#endif
+    }
+
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
+    if (Player* player = pVictim->ToPlayer()) {
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_HEALING_RECEIVED, gain); // pussywizard: optimization
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEALING_RECEIVED, addhealth); // pussywizard: optimization
+    }
+#endif
+
+#endif
 
     return gain;
 }
@@ -1271,7 +1297,7 @@ float SpellCaster:: SpellBaseHealingBonusDone(SpellSchoolMask schoolMask)
             }
         }
     }
-    
+
     return AdvertisedBenefit;
 }
 
@@ -1439,7 +1465,7 @@ int32 SpellCaster::SpellBaseDamageBonusDone(SpellSchoolMask schoolMask)
             }
         }
     }
-    
+
     return DoneAdvertisedBenefit;
 }
 

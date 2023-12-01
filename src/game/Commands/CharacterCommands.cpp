@@ -36,6 +36,10 @@
 #include "CharacterDatabaseCache.h"
 #include "Config/Config.h"
 
+#ifdef USE_ACHIEVEMENTS
+#include "Achievements/AchievementMgr.h"
+#endif
+
 #include <regex>
 
 bool ChatHandler::HandleCharacterAIInfoCommand(char* /*args*/)
@@ -102,7 +106,7 @@ bool ChatHandler::HandleCheatGodCommand(char* args)
             SetSentErrorMessage(true);
             return false;
         }
-        
+
         Player* target;
         if (!ExtractPlayerTarget(&args, &target))
             return false;
@@ -537,7 +541,7 @@ bool ChatHandler::HandleCheatStatusCommand(char* args)
     Player* target;
     if (!ExtractPlayerTarget(&args, &target))
         return false;
-    
+
     if (!target->GetCheatOptions())
     {
         PSendSysMessage("No cheats enabled on %s.", target->GetName());
@@ -697,7 +701,7 @@ bool ChatHandler::HandleLevelUpCommand(char* args)
             pCreature->SetLevel(newlevel);
             pCreature->InitStatsForLevel();
             pCreature->UpdateAllStats();
-        }     
+        }
 
         PSendSysMessage(LANG_YOU_CHANGE_LVL, pCreature->GetName(), newlevel);
     }
@@ -889,7 +893,7 @@ bool ChatHandler::HandleRemoveRidingCommand(char* args)
     }
 
     auto it = skills.find(args);
-    
+
     if (it == skills.end())
     {
         std::stringstream options;
@@ -1129,13 +1133,13 @@ bool ChatHandler::HandleGroupInfoCommand(char* args)
     for (std::size_t i = 0, j = names.size(); i != j; ++i)
     {
         stream << names[i];
-        
+
         if (i + 1 != j)
         {
             stream << ", ";
         }
     }
-    
+
     PSendSysMessage(LANG_GROUP_INFO, (group->isRaidGroup() ? "Raid" : "Party"),
                     playerLink(std::to_string(group->GetId())).c_str(), playerLink(group->GetLeaderName()).c_str(),
                     group->GetMembersCount(), stream.str().c_str());
@@ -1167,7 +1171,7 @@ bool ChatHandler::HandleMountCommand(char* /*args*/)
         SetSentErrorMessage(true);
         return false;
     }
-    
+
     Creature* target = GetSelectedCreature();
     if (!target)
     {
@@ -1550,6 +1554,60 @@ void ChatHandler::HandleCharacterDeletedRestoreHelper(DeletedInfo const& delInfo
         delInfo.name.c_str(), delInfo.accountId, delInfo.lowguid);
     sObjectMgr.LoadPlayerCacheData(delInfo.lowguid);
 }
+
+#ifdef USE_ACHIEVEMENTS
+
+/**
+ * Handles the '.achievements getCategoties' command, which should assemble all categories into a message and sed it back to player
+ *
+ * @param args current player categories version
+ */
+bool ChatHandler::HandleGetCategories(char* args) {
+    sAchievementMgr->getAllCategories(m_session, std::stoi(args));
+    return true;
+}
+
+/**
+ * Handles the '.achievements getAchievements' command, which should assemble all achievements into a message and sed it back to player
+ *
+ * @param args current player achievements version
+ */
+bool ChatHandler::HandleGerAchievements(char* args) {
+    sAchievementMgr->getAllAchievements(m_session, std::stoi(args));
+    return true;
+}
+
+/**
+ * Handles the '.achievements getCriteria' command, which should assemble all criteria into a message and sed it back to player
+ *
+ * @param args current player criteria version
+ */
+bool ChatHandler::HandleGetCriteria(char* args) {
+    sAchievementMgr->getAllCriteria(m_session, std::stoi(args));
+    return true;
+}
+
+/**
+ * Handles the '.achievements getCriteria' command, which should assemble all criteria into a message and sed it back to player
+ *
+ * @param args current player criteria version
+ */
+bool ChatHandler::HandleGetCharacterCriteria(char* args) {
+    sAchievementMgr->getCharacterCriteria(m_session);
+    return true;
+}
+
+/**
+ * Handles the '.achievements getCriteria' command, which should assemble all criteria into a message and sed it back to player
+ *
+ * @param args current player criteria version
+ */
+bool ChatHandler::HandleGetCharacterAchuievements(char* args) {
+    sAchievementMgr->getCharacterAchievements(m_session);
+    return true;
+}
+
+#endif
 
 /**
  * Handles the '.character deleted restore' command, which restores all deleted characters which matches the given search string
@@ -2002,7 +2060,7 @@ bool ChatHandler::HandleCharacterPremadeGearCommand(char* args)
         SendSysMessage(LANG_NO_CHAR_SELECTED);
         return false;
     }
-        
+
     if (!*args)
     {
         PSendSysMessage("Listing available premade templates for %s:", pPlayer->GetName());
@@ -2185,7 +2243,7 @@ bool ChatHandler::HandleCharacterPremadeSaveSpecCommand(char* args)
         {
             Field* fields = result->Fetch();
             uint32 spellId = fields[0].GetUInt32();
-            
+
             if (!sSpellMgr.GetSpellEntry(spellId))
                 continue;
 
@@ -2537,7 +2595,7 @@ bool ChatHandler::HandleHonorSetRPCommand(char *args)
     float value;
     if (!ExtractFloat(&args, value))
         return false;
-    
+
     target->GetHonorMgr().SetRankPoints(value);
     target->GetHonorMgr().Update();
     PSendSysMessage("You have changed rank points of %s to %g.", target->GetName(), value);
@@ -2588,10 +2646,10 @@ bool ChatHandler::HandleLearnAllCommand(char* /*args*/)
                         pNewSpell->HasAttribute(SPELL_ATTR_DO_NOT_DISPLAY) ||
                         pNewSpell->HasAttribute(SPELL_ATTR_EX2_USE_SHAPESHIFT_BAR))
                         continue;
-                } 
+                }
 
                 pPlayer->LearnSpell(spellId, false);
-            }  
+            }
         }
     }
 
@@ -3451,7 +3509,7 @@ bool ChatHandler::HandleDeleteItemCommand(char* args)
                     SetSentErrorMessage(true);
                     return false;
                 }
-                
+
                 if (!CharacterDatabase.DirectPExecute("DELETE FROM `character_inventory` WHERE `item_guid` = %u", guid))
                 {
                     SendSysMessage("Encountered an error while attempting to remove item from inventory");
@@ -3769,6 +3827,13 @@ bool ChatHandler::HandleResetHonorCommand(char* args)
         return false;
 
     target->GetHonorMgr().Reset();
+
+#ifdef USE_ACHIEVEMENTS
+
+    target->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_EARN_HONORABLE_KILL);
+
+#endif
+
     return true;
 }
 
@@ -4435,7 +4500,7 @@ bool ChatHandler::HandleModifyMountCommand(char* args)
         return false;
 
     uint32 mountId = atoi(args);
-    
+
     if (!sObjectMgr.GetCreatureDisplayInfoAddon(mountId))
     {
         SendSysMessage(LANG_NO_MOUNT);
@@ -5365,7 +5430,7 @@ bool ChatHandler::HandlePetLoyaltyCommand(char* args)
         return false;
 
     pet->ModifyLoyalty(loyaltyPoints);
-    
+
     return true;
 }
 

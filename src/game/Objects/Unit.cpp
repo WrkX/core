@@ -733,12 +733,52 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
         }
     }
 
+#ifdef USE_ACHIEVEMENTS
+    // TODO(TsAah): decide on config options for optimization or non-player victims
+
+    if (this != pVictim) {
+        if (Player* killer = GetCharmerOrOwnerPlayerOrPlayerItself()) {
+            // pussywizard: don't allow GMs to deal damage in normal way (this leaves no evidence in logs!), they have commands to do so
+            //if (!allowGM && killer->GetSession()->GetSecurity() && killer->GetSession()->GetSecurity() <= SEC_ADMINISTRATOR)
+            //  return 0;
+
+            // if (auto* const bg = killer->GetBattleGround())  // NOTE(TsAah): uncomment for optimization
+                killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DAMAGE_DONE, damage, 0, pVictim); // pussywizard: InBattleground() optimization
+
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
+            killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_DEALT, damage); // pussywizard: optimization
+#endif
+        }
+    }
+
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
+
+    if (pVictim->GetTypeId() == TYPEID_PLAYER) {
+        pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_RECEIVED, damage); // pussywizard: optimization
+    }
+
+#endif
+#endif
+
     if (health <= damage)
     {
         // Can't kill gods
         if (Player* pPlayer = pVictim->ToPlayer())
             if (pPlayer->IsGod())
                 return 0;
+
+#ifdef USE_ACHIEVEMENTS
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
+
+        if (pVictim->GetTypeId() == TYPEID_PLAYER && pVictim != this) {
+            auto* player = pVictim->ToPlayer();
+            if (player) {
+                player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, health); // pussywizard: optimization
+            }
+        }
+
+#endif
+#endif
 
         DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamage: victim just died");
         Kill(pVictim, spellProto, durabilityLoss); // Function too long, we cut
@@ -759,6 +799,15 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
     else                                                    // if (health <= damage)
     {
         pVictim->ModifyHealth(- (int32)damage);
+
+#ifdef USE_ACHIEVEMENTS
+#ifdef USE_ACHIEVEMENTS_ENABLE_ALL
+
+        if (pVictim->GetTypeId() == TYPEID_PLAYER) {
+            pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_DAMAGE_RECEIVED, damage); // pussywizard: optimization
+        }
+#endif
+#endif
 
         if (damagetype != DOT)
         {
@@ -1019,6 +1068,15 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
     if (pVictim != this) // The one who has the fatal blow
         ProcDamageAndSpell(ProcSystemArguments(pVictim, PROC_FLAG_KILL, PROC_FLAG_HEARTBEAT, PROC_EX_NONE, 0, 0));
 
+#ifdef USE_ACHIEVEMENTS
+
+    // update get killing blow achievements, must be done before setDeathState to be able to require auras on target
+    // and before Spirit of Redemption as it also removes auras
+    if (Player* killerPlayer = GetCharmerOrOwnerPlayerOrPlayerItself())
+        killerPlayer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS, 1, 0, pVictim);
+
+#endif
+
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamageAttackStop");
 
     bool damageFromSpiritOfRedemtionTalent = (spellProto && spellProto->Id == 27795);
@@ -1223,6 +1281,19 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
     }
 
     pVictim->InterruptSpellsCastedOnMe(false, true);
+
+#ifdef USE_ACHIEVEMENTS
+
+    // achievement stuff
+    if (pVictim->GetTypeId() == TYPEID_PLAYER) {
+        if (GetTypeId() == TYPEID_UNIT) {
+            pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILLED_BY_CREATURE, GetEntry());
+        } else if (pVictim != this && GetTypeId() == TYPEID_PLAYER) {
+            pVictim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILLED_BY_PLAYER, 1, ToPlayer()->GetTeamId());
+        }
+    }
+
+#endif
 }
 
 struct PetOwnerKilledUnitHelper
@@ -4994,7 +5065,7 @@ Team Unit::GetTeam() const
                 return ALLIANCE;
         }
     }
-    
+
     return TEAM_NONE;
 }
 
@@ -8681,7 +8752,7 @@ void Unit::HandlePetCommand(CommandStates command, Unit* pTarget)
             else                                    // charmed
                 pCharmer->Uncharm();
             break;
-        }  
+        }
         default:
             sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Unit::HandlePetCommand - Unknown command state %u.", uint32(command));
     }
@@ -10113,7 +10184,7 @@ void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptPositiveSpe
         if (!killDelayed)
             continue;
 
-        // Interruption of spells which are no longer referenced, but for which there is still an event (not yet hit the target for example) 
+        // Interruption of spells which are no longer referenced, but for which there is still an event (not yet hit the target for example)
         auto i_Events = iter->m_Events.GetEvents().begin();
         for (; i_Events != iter->m_Events.GetEvents().end(); ++i_Events)
             if (SpellEvent* event = dynamic_cast<SpellEvent*>(i_Events->second))
@@ -10199,7 +10270,7 @@ bool Unit::GetRandomAttackPoint(Unit const* attacker, float &x, float &y, float 
         pow(initialPosZ - attacker->GetPositionZ(), 2));
     if (dist > attackerTargetDistance)
     {
-        // We're not moving, we're already within range. 
+        // We're not moving, we're already within range.
         attacker->GetPosition(x, y, z);
         return true;
     }

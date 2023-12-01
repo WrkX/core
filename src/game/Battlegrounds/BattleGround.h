@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  * Copyright (C) 2009-2011 MaNGOSZero <https://github.com/mangos/zero>
  * Copyright (C) 2011-2016 Nostalrius <https://nostalrius.org>
@@ -30,6 +30,18 @@
 #include "WorldStates.h"
 #include "SpellDefines.h"
 #include "BattleGroundDefines.h"
+
+#ifdef USE_ACHIEVEMENTS
+
+#include "SpellDefines.h"
+
+#endif
+
+// magic event-numbers
+#define BG_EVENT_NONE 255
+// those generic events should get a high event id
+#define BG_EVENT_GHOST_GATE 253
+#define BG_EVENT_DOOR 254
 
 class Creature;
 class GameObject;
@@ -415,6 +427,11 @@ class BattleGround
         float m_teamStartLocO[BG_TEAMS_COUNT];
 
         uint32 m_playerSkinReflootId;
+
+#ifdef USE_ACHIEVEMENTS
+    public:
+        virtual bool AllNodesConrolledByTeam(TeamId teamId) const { return false; }
+#endif
 };
 
 // helper functions for world state list fill
