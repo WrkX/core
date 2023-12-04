@@ -1062,15 +1062,19 @@ void PartyBotAI::UpdateInCombatAI()
             // Taunt target if its attacking someone else.
             if (pVictim && pVictim->GetVictim() != me)
             {
-                for (const auto& pSpellEntry : spellListTaunt)
+                Unit* tTarget = pVictim->GetVictim()->GetVictim();
+                if (!IsTargetOfTargetTank(tTarget))
                 {
-                    if (CanTryToCastSpell(pVictim, pSpellEntry))
+                    for (const auto & pSpellEntry : spellListTaunt)
                     {
-                        // Skip Mass Taunts if not needed
-                        if ((pSpellEntry == m_spells.warrior.pChallengingShout || pSpellEntry == m_spells.druid.pChallengingRoar) && !shouldTankUseMassTaunt())
-                            continue;
-                        if (DoCastSpell(pVictim, pSpellEntry) == SPELL_CAST_OK)
-                            return;
+                        if (CanTryToCastSpell(pVictim, pSpellEntry))
+                        {
+                            // Skip Mass Taunts if not needed
+                            if ((pSpellEntry == m_spells.warrior.pChallengingShout || pSpellEntry == m_spells.druid.pChallengingRoar) && !shouldTankUseMassTaunt())
+                                continue;
+                            if (DoCastSpell(pVictim, pSpellEntry) == SPELL_CAST_OK)
+                                return;
+                        }
                     }
                 }
             }

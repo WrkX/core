@@ -136,6 +136,7 @@ public:
     void moltenCoreTactics(Player* bot);
     bool shouldTankUseMassTaunt();
     bool BreakableCCNearby(Unit* pVictim, float range);
+    bool IsTargetOfTargetTank(Unit* targetTarget);
     bool isOutOfMana();
 };
 
