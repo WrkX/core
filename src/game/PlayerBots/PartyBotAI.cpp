@@ -3573,9 +3573,7 @@ bool PartyBotAI::shouldTankUseMassTaunt()
      return false;
 }
 
-}
-*/
-bool PartyBotAI::BreakableCCNearby(Unit* pVictim, float range)
+bool PartyBotAI::BreakableCCNearby(Unit * pVictim, float range)
 {
     std::list<Unit*> targets;
     me->GetEnemyListInRadiusAround(pVictim, range, targets);
@@ -3592,6 +3590,8 @@ bool PartyBotAI::BreakableCCNearby(Unit* pVictim, float range)
     if (breaksCC)
         return true;
     return false;
+}
+
 bool PartyBotAI::isOutOfMana()
 {
     if (me->GetPowerPercent(POWER_MANA) < 15.0f &&
