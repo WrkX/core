@@ -125,6 +125,7 @@ public:
     float m_y = 0.0f;
     float m_z = 0.0f;
     float m_o = 0.0f;
+    bool m_oomAnnounced = false;
     bool m_resetSpellData = false;
     bool m_isPassive = false;
     void findItemsInInv(std::list<uint32>& itemIdSearchList, std::list<Item*>& foundItemList) const;
@@ -135,6 +136,7 @@ public:
     void moltenCoreTactics(Player* bot);
     bool shouldTankUseMassTaunt();
     bool BreakableCCNearby(Unit* pVictim, float range);
+    bool isOutOfMana();
 };
 
 #endif

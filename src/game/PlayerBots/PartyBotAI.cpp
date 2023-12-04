@@ -983,6 +983,12 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             }
         }
     }
+    if (GetRole() == ROLE_HEALER && isOutOfMana())
+    {
+        m_oomAnnounced = true;
+    }
+    else if (m_oomAnnounced)
+        m_oomAnnounced = false;
 
     if (me->IsInCombat() && !m_isPassive)
         UpdateInCombatAI();
@@ -3579,5 +3585,14 @@ bool PartyBotAI::BreakableCCNearby(Unit* pVictim, float range)
 
     if (breaksCC)
         return true;
+    return false;
+bool PartyBotAI::isOutOfMana()
+{
+    if (me->GetPowerPercent(POWER_MANA) < 15.0f &&
+        !m_oomAnnounced)
+    {
+        me->MonsterYell("I AM OOM");
+        return true;
+    }
     return false;
 }
