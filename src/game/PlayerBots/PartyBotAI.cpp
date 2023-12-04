@@ -524,6 +524,11 @@ Player* PartyBotAI::SelectShieldTarget() const
             if (pMember == me)
                 continue;
 
+            if (!pMember->GetAttackers().empty() &&
+                pMember->IsCaster() &&
+                !pMember->IsImmuneToMechanic(MECHANIC_SHIELD))
+                return pMember;
+
             if ((pMember->GetHealthPercent() < 90.0f) &&
                 !pMember->GetAttackers().empty() &&
                 !pMember->IsImmuneToMechanic(MECHANIC_SHIELD))
@@ -655,6 +660,21 @@ void PartyBotAI::UpdateAI(uint32 const diff)
 
     if (!me->IsInWorld() || me->IsBeingTeleported())
         return;
+
+    if (GetPartyLeader() == me)
+    {
+        Group* pGroup = me->GetGroup();
+
+        for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+        {
+            if (Player* pMember = itr->getSource())
+            {
+                if (pMember == me || pMember->AI())
+                    continue;
+                pGroup->ChangeLeader(pMember->GetGUIDLow());
+            }
+        }
+    }
 
     if (!m_initialized)
     {
@@ -866,6 +886,19 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             ChatHandler(me).HandleGonameCommand(name);
             return;
         }
+        
+    }
+    if (me->GetMapId() != pLeader->GetMapId() &&
+        me->IsInCombat())
+    {
+        if (!me->IsStopped())
+            me->StopMoving();
+        me->GetMotionMaster()->Clear(false, true);
+        me->GetMotionMaster()->MoveIdle();
+        char name[128] = {};
+        strcpy(name, pLeader->GetName());
+        ChatHandler(me).HandleGonameCommand(name);
+        return;
     }
 
     if (me->GetStandState() != UNIT_STAND_STATE_STAND)
@@ -3194,7 +3227,7 @@ void PartyBotAI::UpdateInCombatAI_Druid()
                 if (DoCastSpell(pAttacker, m_spells.druid.pHibernate) == SPELL_CAST_OK)
                     return;
             }
-        }
+        }          
 
         // Prioritize applying HoTs.
         if (Unit* pTarget = SelectPeriodicHealTarget(80.0f, 90.0f))

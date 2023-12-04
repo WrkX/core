@@ -313,6 +313,17 @@ bool ChatHandler::IsTargetCompanion(Player* pTarget)
     return true;
 }
 
+bool isPlayerBotOwner(Player* pPlayer, Player* bot = nullptr, uint32 botGuid = 0)
+{
+    uint32 playerguid = pPlayer->GetGUIDLow();
+    if (botGuid == 0)
+        botGuid = bot->GetGUIDLow();
+    QueryResult* result = CharacterDatabase.PQuery("SELECT characters_guid FROM characters_companions WHERE characters_guid = %u AND companion_characters_guid = %u", playerguid, botGuid);
+    if (result)
+        return true;
+    return false;
+}
+
 void PartyBotAI::findItemsInInv(std::list<uint32>& itemIdSearchList, std::list<Item*>& foundItemList) const
 {
 
@@ -461,10 +472,17 @@ bool ChatHandler::HandleCompanionEquipCommand(char* args)
         itemId = result->Fetch()->GetUInt16();
         delete result;
     }
-
+    Player* pPlayer = GetSession()->GetPlayer();
     Player* pTarget = GetSelectedPlayer();
     if (!IsTargetCompanion(pTarget))
         return false;
+    
+    if (!isPlayerBotOwner(pPlayer, pTarget))
+    {
+        SendSysMessage("Your are not the Bots owner.");
+        return false;
+    }
+        
 
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
@@ -585,6 +603,11 @@ bool ChatHandler::HandleCompanionListEquipCommand(char* args)
     if (!IsTargetCompanion(pTarget))
         return false;
 
+    if (!isPlayerBotOwner(GetSession()->GetPlayer(), pTarget))
+    {
+        SendSysMessage("Your are not the Bots owner.");
+        return false;
+    }
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
         pAI->SendCompanionEquipList();
@@ -647,6 +670,8 @@ bool ChatHandler::HandleCompanionDeleteItem(char* args)
 
     if (!cId)
         return false;
+    
+    
 
     uint32 itemId = 0;
     if (!ExtractUInt32(&cId, itemId))
@@ -663,10 +688,16 @@ bool ChatHandler::HandleCompanionDeleteItem(char* args)
         itemId = result->Fetch()->GetUInt16();
         delete result;
     }
-
+    Player* pPlayer = GetSession()->GetPlayer();
     Player* pTarget = GetSelectedPlayer();
     if (!IsTargetCompanion(pTarget))
         return false;
+
+    if (!isPlayerBotOwner(pPlayer, pTarget))
+    {
+        SendSysMessage("Your are not the Bots owner.");
+        return false;
+    }
 
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
@@ -688,6 +719,12 @@ bool ChatHandler::HandleCompanionDeleteEverything(char* args)
     Player* pTarget = GetSelectedPlayer();
     if (!IsTargetCompanion(pTarget))
         return false;
+
+    if (!isPlayerBotOwner(GetSession()->GetPlayer(), pTarget))
+    {
+        SendSysMessage("Your are not the Bots owner.");
+        return false;
+    }
 
     if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pTarget->AI()))
     {
@@ -739,7 +776,6 @@ bool CompanionComeToMeHelper(Player* pBot, Player* pPlayer, uint8 mode)
                 ch.SendSysMessage("mode 1");
                 if (pAI->GetRole() == ROLE_TANK)
                 {
-                    ch.SendSysMessage("found tank");
                     return false;
                 }
             }
@@ -748,7 +784,6 @@ bool CompanionComeToMeHelper(Player* pBot, Player* pPlayer, uint8 mode)
                 ch.SendSysMessage("mode 2");
                 if (pAI->GetRole() == ROLE_TANK || pAI->GetRole() == ROLE_MELEE_DPS)
                 {
-                    ch.SendSysMessage("found tank or meele");
                     return false;
                 }
             }
@@ -763,12 +798,23 @@ bool CompanionComeToMeHelper(Player* pBot, Player* pPlayer, uint8 mode)
                 if (pAI->m_updateTimer.GetExpiry() < 3000)
                     pAI->m_updateTimer.Reset(3000);
             }
+            if (Pet* pPet = pBot->GetPet())
+            {
+                if (pPet->GetVictim())
+                {
+                    pPet->AttackStop();
+                    pPet->GetCharmInfo()->SetIsCommandAttack(false);
+                    pPet->GetCharmInfo()->SetIsCommandFollow(true);
+                }
+
+            }
 
             if (pBot->GetStandState() != UNIT_STAND_STATE_STAND)
                 pBot->SetStandState(UNIT_STAND_STATE_STAND);
 
             pBot->InterruptSpellsWithInterruptFlags(SPELL_INTERRUPT_FLAG_MOVEMENT);
             pBot->MonsterMove(pPlayer->GetPositionX(), pPlayer->GetPositionY(), pPlayer->GetPositionZ());
+
             return true;
         }
     }
@@ -933,7 +979,8 @@ bool ChatHandler::HandleCompanionDPSPause(char* args)
         SendSysMessage("No party bots in group.");
 
     return true;
-}bool ChatHandler::HandleCompanionPassiveCommand(char* args)
+
+bool ChatHandler::HandleCompanionPassiveCommand(char* args)
 {
     Player* pPlayer = GetSession()->GetPlayer();
     Unit* pVictim = pPlayer->GetSelectedUnit();
