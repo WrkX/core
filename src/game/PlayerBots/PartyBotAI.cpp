@@ -3573,6 +3573,8 @@ bool PartyBotAI::shouldTankUseMassTaunt()
      return false;
 }
 
+}
+*/
 bool PartyBotAI::BreakableCCNearby(Unit* pVictim, float range)
 {
     std::list<Unit*> targets;
