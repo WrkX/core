@@ -204,7 +204,7 @@ bool PartyBotAI::DrinkAndEat()
 
     bool const isEating = me->HasAura(PB_SPELL_FOOD);
     bool const isDrinking = me->HasAura(PB_SPELL_DRINK);
-
+        
     if (!isEating && needToEat)
     {
         if (me->GetMotionMaster()->GetCurrentMovementGeneratorType())
@@ -871,7 +871,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
     if (me->GetStandState() != UNIT_STAND_STATE_STAND)
         me->SetStandState(UNIT_STAND_STATE_STAND);
 
-    if (!me->IsInCombat() && !me->IsMounted())
+    if (!me->IsInCombat() && !me->IsMounted() && !m_isPassive)
     {
         UpdateOutOfCombatAI();
 
@@ -884,7 +884,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
 
     Unit* pVictim = me->GetVictim();
 
-    if (GetRole() != ROLE_HEALER)
+    if (GetRole() != ROLE_HEALER && !m_isPassive)
     {
         if (!pVictim || !IsValidHostileTarget(pVictim) || pVictim != SelectAttackTarget(pLeader))
         {
@@ -951,7 +951,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         }
     }
 
-    if (me->IsInCombat())
+    if (me->IsInCombat() && !m_isPassive)
         UpdateInCombatAI();
 }
 

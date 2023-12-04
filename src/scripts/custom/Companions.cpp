@@ -933,4 +933,45 @@ bool ChatHandler::HandleCompanionDPSPause(char* args)
         SendSysMessage("No party bots in group.");
 
     return true;
+}bool ChatHandler::HandleCompanionPassiveCommand(char* args)
+{
+    Player* pPlayer = GetSession()->GetPlayer();
+    Unit* pVictim = pPlayer->GetSelectedUnit();
+    Group* pGroup = pPlayer->GetGroup();
+
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Player* pMember = itr->getSource())
+        {
+            if (pMember == pPlayer)
+                continue;
+            
+            if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
+            {
+                pAI->m_isPassive = true;
+            }
+        }
+    }
+    return true;
+}
+bool ChatHandler::HandleCompanionActiveCommand(char* args)
+{
+    Player* pPlayer = GetSession()->GetPlayer();
+    Unit* pVictim = pPlayer->GetSelectedUnit();
+    Group* pGroup = pPlayer->GetGroup();
+
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Player* pMember = itr->getSource())
+        {
+            if (pMember == pPlayer)
+                continue;
+            
+            if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
+            {
+                pAI->m_isPassive = false;
+            }
+        }
+    }
+    return true;
 }

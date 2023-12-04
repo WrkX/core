@@ -293,6 +293,8 @@ class ChatHandler
         bool HandleCompanionJoinCommand(char* args);
         bool HandleCompanionTellRoleCommmand(char* args);
         bool HandleCompanionDPSPause(char* args);
+        bool HandleCompanionPassiveCommand(char* args);
+        bool HandleCompanionActiveCommand(char* args);
         // spell_disabled
         bool HandleReloadSpellDisabledCommand(char *args);
         // AutoBroadCast
