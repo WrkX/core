@@ -869,18 +869,37 @@ bool ChatHandler::HandleCompanionComeCommand(char* args)
 
 bool ChatHandler::HandleCompanionJoinCommand(char* args)
 {
-    Player* pPlayer = m_session->GetPlayer();
-    Player* pTarget = GetSelectedPlayer();
-
-    if (!IsTargetCompanion(pTarget))
+    if (!args)
         return false;
-    
-    if (pTarget->AI())
-        {
-            loadBotFromMenu(pPlayer, pTarget->GetGUIDLow());
-        }
+    char* guildStr;
+    if (guildStr = ExtractArg(&args))
+    {
+        Player* pPlayer = m_session->GetPlayer();
+        Group* pGroup = pPlayer->GetGroup();
+        std::string compName = guildStr;
+        compName[0] = toupper(compName[0]);
+        uint32 groupmember = pGroup->GetMemberGuid(compName).GetRawValue();
 
-return true;
+        if (groupmember == 0)
+        {
+            PSendSysMessage("Cannot find this Companion in Group");
+            return false;
+        }
+            
+
+        if (isPlayerBotOwner(pPlayer, nullptr, groupmember))
+        {
+            loadBotFromMenu(pPlayer, groupmember);
+            return true;
+        }
+        else
+        {
+            PSendSysMessage("That companion is not yours. Only the owner of companions can load them.");
+            return false;
+        }
+    }
+    PSendSysMessage("Invalid Name.");
+    return true;
 }
 
 bool ChatHandler::HandleCompanionTellRoleCommmand(char* args)
