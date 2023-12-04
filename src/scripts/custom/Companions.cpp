@@ -998,6 +998,7 @@ bool ChatHandler::HandleCompanionDPSPause(char* args)
         SendSysMessage("No party bots in group.");
 
     return true;
+}
 
 bool ChatHandler::HandleCompanionPassiveCommand(char* args)
 {
@@ -1020,6 +1021,7 @@ bool ChatHandler::HandleCompanionPassiveCommand(char* args)
     }
     return true;
 }
+
 bool ChatHandler::HandleCompanionActiveCommand(char* args)
 {
     Player* pPlayer = GetSession()->GetPlayer();

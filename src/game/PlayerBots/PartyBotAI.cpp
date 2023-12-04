@@ -3602,3 +3602,17 @@ bool PartyBotAI::isOutOfMana()
     }
     return false;
 }
+
+bool PartyBotAI::IsTargetOfTargetTank(Unit* targetTarget) {
+    if (targetTarget->AI())
+    {
+        if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(targetTarget->AI()))
+        {
+            if (pAI->GetRole() == ROLE_TANK)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
