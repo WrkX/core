@@ -190,6 +190,9 @@ bool PartyBotAI::DrinkAndEat()
     if (GetPartyLeader()->IsInCombat())
         return false;
 
+    if (GetPartyLeader()->IsMoving())
+        return false;
+
     if (m_isBuffing)
         return false;
 
