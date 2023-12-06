@@ -941,7 +941,7 @@ bool ChatHandler::HandleCompanionTellRoleCommmand(char* args)
     return true;    
 }
 
-bool ChatHandler::HandleCompanionDPSPause(char* args)
+bool ChatHandler::HandleCompanionDPSPauseCommand(char* args)
 {
     int32 duration = 0;
     if (*args)
@@ -995,10 +995,14 @@ bool ChatHandler::HandleCompanionDPSPause(char* args)
         PSendSysMessage("All DPS Companion paused for %u seconds.", (duration / IN_MILLISECONDS));
     }
     else
-        SendSysMessage("No party bots in group.");
+        SendSysMessage("No companions in group.");
 
     return true;
 }
+
+    return true;
+}
+
 
 bool ChatHandler::HandleCompanionPassiveCommand(char* args)
 {

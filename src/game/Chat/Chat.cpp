@@ -1302,7 +1302,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "delall",         SEC_PLAYER,         false, &ChatHandler::HandleCompanionDeleteEverything,  "", nullptr },
         { "cjoin",          SEC_PLAYER,         false, &ChatHandler::HandleCompanionJoinCommand,  "", nullptr },
         { "crole",          SEC_PLAYER,         false, &ChatHandler::HandleCompanionTellRoleCommmand,  "", nullptr },
-        { "dpspause",       SEC_PLAYER,         false, &ChatHandler::HandleCompanionDPSPause,  "", nullptr },
+        { "dpspause",       SEC_PLAYER,         false, &ChatHandler::HandleCompanionDPSPauseCommand,  "", nullptr },
         { "ccome",          SEC_PLAYER,         false, &ChatHandler::HandleCompanionComeCommand,  "", nullptr },
         { "cpassive",       SEC_PLAYER,         false, &ChatHandler::HandleCompanionPassiveCommand,  "", nullptr },
         { "cactive",        SEC_PLAYER,         false, &ChatHandler::HandleCompanionActiveCommand,  "", nullptr },

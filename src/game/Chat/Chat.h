@@ -292,7 +292,7 @@ class ChatHandler
         bool HandleCompanionComeCommand(char* args);
         bool HandleCompanionJoinCommand(char* args);
         bool HandleCompanionTellRoleCommmand(char* args);
-        bool HandleCompanionDPSPause(char* args);
+        bool HandleCompanionDPSPauseCommand(char* args);
         bool HandleCompanionPullCommand(char* args);
         bool HandleCompanionPassiveCommand(char* args);
         bool HandleCompanionActiveCommand(char* args);
