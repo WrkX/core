@@ -296,6 +296,7 @@ class ChatHandler
         bool HandleCompanionPullCommand(char* args);
         bool HandleCompanionPassiveCommand(char* args);
         bool HandleCompanionActiveCommand(char* args);
+        bool HandleCompanionUnpauseCommand(char* args);
         // spell_disabled
         bool HandleReloadSpellDisabledCommand(char *args);
         // AutoBroadCast

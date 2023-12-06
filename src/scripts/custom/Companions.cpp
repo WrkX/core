@@ -1,4 +1,3 @@
-#include "Chat.h"
 #include "PartyBotAI.h"
 #include "Chat.h"
 #include "Companions.h"
@@ -1000,6 +999,26 @@ bool ChatHandler::HandleCompanionDPSPauseCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleCompanionUnpauseCommand(char* args)
+{
+    Player* pPlayer = GetSession()->GetPlayer();
+    Unit* pVictim = pPlayer->GetSelectedUnit();
+    Group* pGroup = pPlayer->GetGroup();
+
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Player* pMember = itr->getSource())
+        {
+            if (pMember == pPlayer)
+                continue;
+
+            if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
+            {
+                pAI->m_updateTimer.Reset(0);
+            }
+        }
+    }
+    SendSysMessage("All companions were unpaused.");
     return true;
 }
 
