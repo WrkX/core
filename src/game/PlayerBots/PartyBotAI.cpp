@@ -30,9 +30,41 @@
 #include "custom/Companions.h"
 #include "custom/custom_raid_strats.h"
 
+enum ManaPotionsId
+{
+    MINOR_MANA_POTION = 2455,
+    LESSER_MANA_POTION = 3385,
+    MANA_POTION = 3827,
+    GREATER_MANA_POTION = 6149,
+    SUPERIOR_MANA_POTION = 13443,
+    MAJOR_MANA_POTION = 13444,
+};
 
+enum ManaRunesId
+{
+    DEMONIC_RUNE = 12662,
+    DARK_RUNE = 20520
+};
 
+enum HealingItemId
+{
+    MINOR_HEALING_POTION = 118,
+    LESSER_HEALING_POTION = 858,
+    HEALING_POTION = 929,
+    GREATER_HEALING_POTION = 1710,
+    SUPERIOR_HEALING_POTION = 3928,
+    MAJOR_HEALING_POTION = 13446,
+    WHIPPER_ROOT_TUBER = 21974,
+};
 
+enum Bandages
+{
+    HEAVY_LINEN_BANDAGE = 2581,
+    HEAVY_WOOL_BANDAGE = 3531,
+    HEAVY_SILK_BANDAGE = 6451,
+    HEAVY_MAGEWEAVE_BANDAGE = 8545,
+    HEAVY_RUNECLOTH_BANDAGE = 14530
+};
 
 enum PartyBotSpells
 {
@@ -635,6 +667,7 @@ void PartyBotAI::OnPlayerLogin()
         if (!m_initialized)
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SPAWNING);
         if (companionInitialized == 0) {
+            
             me->GiveLevel(m_level);
             me->InitTalentForLevel();
             for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END+1; ++i)
@@ -645,7 +678,8 @@ void PartyBotAI::OnPlayerLogin()
             ChatHandler(me).HandleLearnAllTrainerCommand("");
             EquipRandomGearInEmptySlots(m_role);
             me->UpdateSkillsToMaxSkillsForLevel();
-            
+            me->LearnSpell(10846, false);
+            me->SetSkill(129, 300, 300);
             CharacterDatabase.PExecute("Update characters_companions set initialized = 1 where companion_characters_guid = %u", companionGuid);
         }
         me->ResurrectPlayer(100, false);
@@ -891,6 +925,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         }
         
     }
+    
     if (me->GetMapId() != pLeader->GetMapId() &&
         me->IsInCombat())
     {
@@ -1092,6 +1127,40 @@ void PartyBotAI::UpdateInCombatAI()
             moltenCoreTactics(me);
         }
     }
+
+    if ((me->GetHealthPercent() < 30.0f) &&
+        GetRole() != ROLE_HEALER &&
+        !IsInDuel() &&
+        !AreOthersOnSameTarget(me->GetObjectGuid(), false, true))
+    {
+        if (CanUseItem(SelectHealingPotionForLevel()))
+            CreateAndUseItemFromId(SelectHealingPotionForLevel());
+    }
+
+    if (IsInDuel() &&
+        me->GetVictim()->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL) &&
+        (me->GetHealthPercent()<60.0f))
+    {
+        if (CanUseItem(SelectBandageForLevel()))
+            if (CreateAndUseItemFromId(SelectBandageForLevel()))
+                return;
+    }
+
+    if (me->IsInCombat() &&
+        !AreOthersOnSameTarget(me->GetObjectGuid(), false, true) &&
+        (me->GetHealthPercent() < 20.0f) &&
+        !IsInDuel() &&
+        GetRole() != ROLE_TANK &&
+        GetRole() != ROLE_HEALER)
+    {
+        if (CanUseItem(SelectBandageForLevel()))
+            if (CreateAndUseItemFromId(SelectBandageForLevel()))
+                return;
+    }
+
+    if (me->GetPowerPercent(POWER_MANA) < 20.0f)
+        UseManaPot();
+    
     switch (me->GetClass())
     {
         case CLASS_PALADIN:
@@ -3474,7 +3543,7 @@ void PartyBotAI::UpdateInCombatAI_Druid()
         case FORM_NONE:
         case FORM_MOONKIN:
         {
-            if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE &&
+             if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE &&
                 me->GetDistance(pVictim) > 30.0f)
             {
                 me->GetMotionMaster()->MoveChase(pVictim, 25.0f);
@@ -3599,7 +3668,7 @@ bool PartyBotAI::isOutOfMana()
 {
     if (me->GetPowerPercent(POWER_MANA) < 15.0f &&
         !m_oomAnnounced)
-    {
+    {           
         me->MonsterYell("I AM OOM");
         return true;
     }
@@ -3618,4 +3687,103 @@ bool PartyBotAI::IsTargetOfTargetTank(Unit* targetTarget) {
         }
     }
     return false;
+
+void PartyBotAI::UseManaPot()
+{
+    if (IsInDuel())
+        return;
+
+    if (CanUseItem(MINOR_HEALING_POTION))
+    {
+        CreateAndUseItemFromId(SelectManaPotionForLevel());
+        return;
+    }
+    else if (CanUseItem(DEMONIC_RUNE) &&
+        (me->GetHealthPercent() > 50.0f))
+    {
+        CreateAndUseItemFromId(DEMONIC_RUNE);
+        return;
+    }
+}
+
+bool PartyBotAI::CanUseItem(uint32 itemid)
+{
+    ItemPrototype const* pProto = sObjectMgr.GetItemPrototype(itemid);
+    for (auto const& itr : pProto->Spells)
+    {
+        if (itr.SpellId && itr.SpellTrigger == ITEM_SPELLTRIGGER_ON_USE)
+        {
+            if (SpellEntry const* pSpellEntry = sSpellMgr.GetSpellEntry(itr.SpellId))
+            {
+                if (me->IsSpellReady(*pSpellEntry, pProto))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool PartyBotAI::CreateAndUseItemFromId(uint32 itemId)
+{
+    if (Item* pItem = me->StoreNewItemInInventorySlot(itemId, 1))
+    {
+        me->SendNewItem(pItem, 1, true, false);
+        UseItemEffect(pItem);
+        return true;
+     }
+         
+     return false;
+}
+
+uint32 PartyBotAI::SelectHealingPotionForLevel()
+{
+    uint32 itemId;
+    if (me->GetLevel() < 8)
+        itemId = MINOR_HEALING_POTION;
+    else if (me->GetLevel() < 12)
+        itemId = LESSER_HEALING_POTION;
+    else if (me->GetLevel() < 21)
+        itemId = HEALING_POTION;
+    else if (me->GetLevel() < 35)
+        itemId = GREATER_HEALING_POTION;
+    else if (me->GetLevel() < 45)
+        itemId = SUPERIOR_HEALING_POTION;
+    else
+        itemId = MAJOR_HEALING_POTION;
+    return itemId;
+
+}uint32 PartyBotAI::SelectBandageForLevel()
+{
+    uint32 itemId;
+    if (me->GetLevel() < 15)
+        itemId = HEAVY_LINEN_BANDAGE;
+    else if (me->GetLevel() < 30)
+        itemId = HEAVY_WOOL_BANDAGE;
+    else if (me->GetLevel() < 45)
+        itemId = HEAVY_SILK_BANDAGE;
+    else if (me->GetLevel() < 55)
+        itemId = HEAVY_MAGEWEAVE_BANDAGE;
+    else
+        itemId = HEAVY_RUNECLOTH_BANDAGE;
+    return itemId;
+}
+
+uint32 PartyBotAI::SelectManaPotionForLevel()
+{
+    uint32 itemId;
+    if (me->GetLevel() < 8)
+        itemId = MINOR_MANA_POTION;
+    else if (me->GetLevel() < 12)
+        itemId = LESSER_MANA_POTION;
+    else if (me->GetLevel() < 21)
+        itemId = MANA_POTION;
+    else if (me->GetLevel() < 35)
+        itemId = GREATER_MANA_POTION;
+    else if (me->GetLevel() < 45)
+        itemId = SUPERIOR_MANA_POTION;
+    else
+        itemId = MAJOR_MANA_POTION;
+    return itemId;
 }

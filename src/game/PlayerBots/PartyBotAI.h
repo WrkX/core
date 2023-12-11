@@ -137,7 +137,13 @@ public:
     bool shouldTankUseMassTaunt();
     bool BreakableCCNearby(Unit* pVictim, float range);
     bool IsTargetOfTargetTank(Unit* targetTarget);
+    void UseManaPot();
     bool isOutOfMana();
+    bool CanUseItem(uint32 itemid);
+    uint32 SelectHealingPotionForLevel();
+    uint32 SelectBandageForLevel();
+    uint32 SelectManaPotionForLevel();
+    bool CreateAndUseItemFromId(uint32 itemId);
 };
 
 #endif
