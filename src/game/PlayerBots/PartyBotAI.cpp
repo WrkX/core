@@ -3687,6 +3687,7 @@ bool PartyBotAI::IsTargetOfTargetTank(Unit* targetTarget) {
         }
     }
     return false;
+}
 
 void PartyBotAI::UseManaPot()
 {
