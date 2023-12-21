@@ -921,6 +921,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             char name[128] = {};
             strcpy(name, pLeader->GetName());
             ChatHandler(me).HandleGonameCommand(name);
+            me->CastSpell(me, 7078, false);
             return;
         }
         
