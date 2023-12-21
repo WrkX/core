@@ -2975,3 +2975,11 @@ DynamicRespawn.AffectLevelBelow         = 0
 DynamicRespawn.PlayersThreshold         = 0
 DynamicRespawn.PlayersMaxLevelDiff      = 0
 
+###################################################################################################################
+#	WrkX Edit
+#
+#	WrkX.PetXPMultiplier
+#		The multiplier for the experience the pet gets.
+#		Default: 2
+###################################################################################################################
+WrkX.PetXPMultiplier					= 2

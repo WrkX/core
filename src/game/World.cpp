@@ -1226,6 +1226,9 @@ void World::LoadConfigSettings(bool reload)
     // Smartlog data
     sLog.InitSmartlogEntries(sConfig.GetStringDefault("Smartlog.ExtraEntries", ""));
     sLog.InitSmartlogGuids(sConfig.GetStringDefault("Smartlog.ExtraGuids", ""));
+
+    // WrkX Edit
+    setConfig(CONFIG_FLOAT_WRKX_PETXP, "WrkX.PetXPMultiplier", 2.0f);
 }
 
 void CharactersDatabaseWorkerThread()

@@ -20211,8 +20211,10 @@ void Player::RewardSinglePlayerAtKill(Unit* pVictim)
         // Pet should only gain XP if mob is not grey to Owner.
         if (xp)
         {
+            float petXpMulitplier = sWorld.getConfig(CONFIG_FLOAT_WRKX_PETXP);
+
             if (Pet* pet = GetPet())
-                pet->GivePetXP(MaNGOS::XP::Gain(pet, static_cast<Creature*>(pVictim)));
+                pet->GivePetXP(MaNGOS::XP::Gain(pet, static_cast<Creature*>(pVictim)) * petXpMulitplier);
         }
 
         // normal creature (not pet/etc) can be only in !PvP case
