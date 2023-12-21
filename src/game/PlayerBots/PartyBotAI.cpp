@@ -585,7 +585,8 @@ bool PartyBotAI::CrowdControlMarkedTargets()
         if (Unit* pTarget = GetMarkedTarget(mark))
         {
             if (!pTarget->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL) &&
-                IsValidHostileTarget(pTarget) && !AreOthersOnSameTarget(pTarget->GetObjectGuid()))
+                IsValidHostileTarget(pTarget) && 
+                !AreOthersOnSameTarget(pTarget->GetObjectGuid()))
             {
                 if (CanTryToCastSpell(pTarget, pSpellEntry))
                 {
@@ -1109,7 +1110,7 @@ void PartyBotAI::UpdateInCombatAI()
                         if (CanTryToCastSpell(pVictim, pSpellEntry))
                         {
                             // Skip Mass Taunts if not needed
-                            if ((pSpellEntry == m_spells.warrior.pChallengingShout || pSpellEntry == m_spells.druid.pChallengingRoar) && !shouldTankUseMassTaunt())
+                            if ((pSpellEntry == m_spells.warrior.pChallengingShout || pSpellEntry == m_spells.druid.pChallengingRoar) && !ShouldTankUseMassTaunt())
                                 continue;
                             if (DoCastSpell(pVictim, pSpellEntry) == SPELL_CAST_OK)
                                 return;
@@ -3625,7 +3626,8 @@ void PartyBotAI::UpdateInCombatAI_Druid()
     }
 }
 
-bool PartyBotAI::shouldTankUseMassTaunt()
+
+bool PartyBotAI::ShouldTankUseMassTaunt()
 {
     std::list<Unit*> targets;
     me->GetEnemyListInRadiusAround(me, 15.0f, targets);

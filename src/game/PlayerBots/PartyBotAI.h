@@ -134,7 +134,7 @@ public:
     Item* FindItem(uint32 ItemId);
     bool partybotIsInRaid(Player* player);
     void moltenCoreTactics(Player* bot);
-    bool shouldTankUseMassTaunt();
+    bool ShouldTankUseMassTaunt();
     bool BreakableCCNearby(Unit* pVictim, float range);
     bool IsTargetOfTargetTank(Unit* targetTarget);
     void UseManaPot();
