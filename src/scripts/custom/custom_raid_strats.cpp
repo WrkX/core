@@ -10,7 +10,7 @@ enum
 
 bool PartyBotAI::partybotIsInRaid(Player* player)
 {
-    if (player->GetMapId() == 409)
+    if (player->GetMap()->IsRaid())
     {
         return true;
     }
