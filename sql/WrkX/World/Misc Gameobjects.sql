@@ -1,0 +1,2 @@
+-- Mailbox Darnassus AH
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecsmin`, `spawntimesecsmax`, `animprogress`, `state`, `spawn_flags`, `visibility_mod`, `patch_min`, `patch_max`) VALUES (3998643, 142110, 1, 9841.96, 2314.14, 1317.41, 4.54111, 0, 0, 0.764996, -0.644035, 25, 25, 100, 1, 0, 0, 0, 10);
