@@ -3673,10 +3673,13 @@ bool PartyBotAI::isOutOfMana()
 {
     if (me->GetPowerPercent(POWER_MANA) < 15.0f &&
         !m_oomAnnounced)
-    {           
+    {
         me->MonsterYell("I AM OOM");
         return true;
     }
+    else if (me->GetPowerPercent(POWER_MANA) < 15.0f && m_oomAnnounced)
+        return true;
+
     return false;
 }
 
