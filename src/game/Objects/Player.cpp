@@ -3642,6 +3642,20 @@ void Player::GiveLevel(uint32 level)
     // update level to hunter/summon pet
     if (Pet* pet = GetPet())
         pet->SynchronizeLevelWithOwner();
+
+    if (GetLevel() == 60)
+    {
+        Quest const* pQuest;
+        if (GetTeam() == HORDE)
+            pQuest = sObjectMgr.GetQuestTemplate(14999);
+        if (GetTeam() == ALLIANCE)
+            pQuest = sObjectMgr.GetQuestTemplate(14998);
+
+        if (CanAddQuest(pQuest, true))
+        {
+            AddQuest(pQuest, nullptr);
+        }
+    }
 }
 
 void Player::UpdateFreeTalentPoints(bool resetIfNeed)
