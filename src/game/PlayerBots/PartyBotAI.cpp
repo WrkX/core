@@ -3203,6 +3203,8 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.druid.pGiftoftheWild))
         {
+            if (me->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT))
+                me->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
             if (CanTryToCastSpell(pTarget, m_spells.druid.pGiftoftheWild))
             {
                 if (DoCastSpell(pTarget, m_spells.druid.pGiftoftheWild) == SPELL_CAST_OK)
@@ -3217,6 +3219,8 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.druid.pMarkoftheWild))
         {
+            if (me->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT))
+                me->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
             if (CanTryToCastSpell(pTarget, m_spells.druid.pMarkoftheWild))
             {
                 if (DoCastSpell(pTarget, m_spells.druid.pMarkoftheWild) == SPELL_CAST_OK)
@@ -3238,6 +3242,8 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
                 {
                     if (pAI->GetRole() == ROLE_TANK)
                     {
+                        if (me->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT))
+                            me->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
                         if (CanTryToCastSpell(pTarget, m_spells.druid.pThorns))
                         {
                             if (DoCastSpell(pTarget, m_spells.druid.pThorns) == SPELL_CAST_OK)
@@ -3421,13 +3427,6 @@ void PartyBotAI::UpdateInCombatAI_Druid()
 
             if (me->GetComboPoints() > 4)
             {
-                if (m_spells.druid.pFerociousBite &&
-                    CanTryToCastSpell(pVictim, m_spells.druid.pFerociousBite))
-                {
-                    if (DoCastSpell(pVictim, m_spells.druid.pFerociousBite) == SPELL_CAST_OK)
-                        return;
-                }
-
                 if (m_spells.druid.pRip &&
                     CanTryToCastSpell(pVictim, m_spells.druid.pRip))
                 {
@@ -3698,6 +3697,9 @@ bool PartyBotAI::IsTargetOfTargetTank(Unit* targetTarget) {
 void PartyBotAI::UseManaPot()
 {
     if (IsInDuel())
+        return;
+
+    if (me->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT))
         return;
 
     if (CanUseItem(MINOR_HEALING_POTION))

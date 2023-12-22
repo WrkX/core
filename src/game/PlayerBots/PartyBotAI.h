@@ -144,6 +144,7 @@ public:
     uint32 SelectBandageForLevel();
     uint32 SelectManaPotionForLevel();
     bool CreateAndUseItemFromId(uint32 itemId);
+    bool ShouldRangedDPSDruidSwitchForm(ShapeshiftForm form);
 };
 
 #endif
