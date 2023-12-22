@@ -1132,6 +1132,7 @@ void PartyBotAI::UpdateInCombatAI()
 
     if ((me->GetHealthPercent() < 30.0f) &&
         GetRole() != ROLE_HEALER &&
+        !me->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT) &&
         !IsInDuel() &&
         !AreOthersOnSameTarget(me->GetObjectGuid(), false, true))
     {
@@ -1141,7 +1142,8 @@ void PartyBotAI::UpdateInCombatAI()
 
     if (IsInDuel() &&
         me->GetVictim()->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL) &&
-        (me->GetHealthPercent()<60.0f))
+        (me->GetHealthPercent()<60.0f) &&
+        !me->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT))
     {
         if (CanUseItem(SelectBandageForLevel()))
             if (CreateAndUseItemFromId(SelectBandageForLevel()))
@@ -1150,6 +1152,7 @@ void PartyBotAI::UpdateInCombatAI()
 
     if (me->IsInCombat() &&
         !AreOthersOnSameTarget(me->GetObjectGuid(), false, true) &&
+        !me->HasAuraType(SPELL_AURA_MOD_SHAPESHIFT) &&
         (me->GetHealthPercent() < 20.0f) &&
         !IsInDuel() &&
         GetRole() != ROLE_TANK &&
