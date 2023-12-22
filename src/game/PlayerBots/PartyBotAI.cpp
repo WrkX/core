@@ -1102,8 +1102,8 @@ void PartyBotAI::UpdateInCombatAI()
             // Taunt target if its attacking someone else.
             if (pVictim && pVictim->GetVictim() != me)
             {
-                Unit* tTarget = pVictim->GetVictim()->GetVictim();
-                if (!IsTargetOfTargetTank(tTarget))
+                Unit* tTarget = pVictim->GetVictim();
+                if (tTarget && !IsTargetOfTargetTank(tTarget))
                 {
                     for (const auto & pSpellEntry : spellListTaunt)
                     {
@@ -3679,7 +3679,7 @@ bool PartyBotAI::isOutOfMana()
 }
 
 bool PartyBotAI::IsTargetOfTargetTank(Unit* targetTarget) {
-    if (targetTarget->AI())
+    if (targetTarget->AI() && targetTarget->IsPlayer())
     {
         if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(targetTarget->AI()))
         {
