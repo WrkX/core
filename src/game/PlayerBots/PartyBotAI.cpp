@@ -1105,7 +1105,7 @@ void PartyBotAI::UpdateInCombatAI()
                 Unit* tTarget = pVictim->GetVictim();
                 if (tTarget && !IsTargetOfTargetTank(tTarget))
                 {
-                    for (const auto & pSpellEntry : spellListTaunt)
+                    for (const auto & pSpellEntry : m_spellListTaunt)
                     {
                         if (CanTryToCastSpell(pVictim, pSpellEntry))
                         {
