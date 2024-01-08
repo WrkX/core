@@ -709,7 +709,7 @@ void WorldSession::LogoutPlayer(bool Save)
         bool removedFromMap = false;
         if (Map* map = _player->FindMap())
         {
-            if (map->IsNonRaidDungeon() && _player->GetGroup())
+            if (map->IsNonRaidDungeon() && !_player->GetBoundInstanceSaveForSelfOrGroup(map->GetId()))
             {
                 AreaTriggerTeleport const* at = sObjectMgr.GetGoBackTrigger(map->GetId());
                 if (at)
