@@ -134,7 +134,7 @@ void PartyBotAI::CloneFromPlayer(Player const* pPlayer)
         if (Item* pItem = pPlayer->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
         {
             me->SatisfyItemRequirements(pItem->GetProto());
-            me->StoreNewItemInBestSlots(pItem->GetEntry(), 1);
+            me->StoreNewItemInBestSlots(pItem->GetEntry(), 1, pItem->GetEnchantmentId(EnchantmentSlot(0)));
         }   
     }
 }
@@ -1227,6 +1227,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Paladin()
                 if (DoCastSpell(pTarget, m_spells.paladin.pBlessingBuff) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }  
@@ -1781,6 +1782,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Mage()
             if (DoCastSpell(me, m_spells.mage.pArcaneBrilliance) == SPELL_CAST_OK)
             {
                 m_isBuffing = true;
+                me->ClearTarget();
                 return;
             }
         }
@@ -1794,6 +1796,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Mage()
                 if (DoCastSpell(pTarget, m_spells.mage.pArcaneIntellect) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
@@ -1806,6 +1809,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Mage()
         if (DoCastSpell(me, m_spells.mage.pIceArmor) == SPELL_CAST_OK)
         {
             m_isBuffing = true;
+            me->ClearTarget();
             return;
         }
     }
@@ -1816,6 +1820,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Mage()
         if (DoCastSpell(me, m_spells.mage.pIceBarrier) == SPELL_CAST_OK)
         {
             m_isBuffing = true;
+            me->ClearTarget();
             return;
         }
     }
@@ -2057,6 +2062,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
                 if (DoCastSpell(pTarget, m_spells.priest.pPrayerofFortitude) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
@@ -2071,6 +2077,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
                 if (DoCastSpell(pTarget, m_spells.priest.pPowerWordFortitude) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
@@ -2086,6 +2093,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
                 if (DoCastSpell(pTarget, m_spells.priest.pPrayerofSpirit) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
@@ -2100,13 +2108,32 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
                 if (DoCastSpell(me, m_spells.priest.pDivineSpirit) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
         }
     }
+
     /* 
     if (m_spells.priest.pShadowProtection)
+    if (m_spells.priest.pPrayerofShadowProtection)
+    {
+        if (Player* pTarget = SelectBuffTarget(m_spells.priest.pPrayerofShadowProtection))
+        {
+            if (CanTryToCastSpell(pTarget, m_spells.priest.pPrayerofShadowProtection))
+            {
+                if (DoCastSpell(pTarget, m_spells.priest.pPrayerofShadowProtection) == SPELL_CAST_OK)
+                {
+                    m_isBuffing = true;
+                    me->ClearTarget();
+                    return;
+                }
+            }
+        }
+    }
+    else if (m_spells.priest.pShadowProtection)
+
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.priest.pShadowProtection))
         {
@@ -2115,6 +2142,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
                 if (DoCastSpell(pTarget, m_spells.priest.pShadowProtection) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
@@ -2127,6 +2155,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
         if (DoCastSpell(me, m_spells.priest.pInnerFire) == SPELL_CAST_OK)
         {
             m_isBuffing = true;
+            me->ClearTarget();
             return;
         }
     }
@@ -2383,6 +2412,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Warlock()
                 if (DoCastSpell(pTarget, m_spells.warlock.pDetectInvisibility) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
@@ -2395,6 +2425,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Warlock()
         if (DoCastSpell(me, m_spells.warlock.pDemonArmor) == SPELL_CAST_OK)
         {
             m_isBuffing = true;
+            me->ClearTarget();
             return;
         }
     }
@@ -3210,6 +3241,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
                 if (DoCastSpell(pTarget, m_spells.druid.pGiftoftheWild) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }
@@ -3226,6 +3258,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
                 if (DoCastSpell(pTarget, m_spells.druid.pMarkoftheWild) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
+                    me->ClearTarget();
                     return;
                 }
             }

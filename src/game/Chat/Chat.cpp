@@ -251,6 +251,7 @@ ChatCommand * ChatHandler::getCommandTable()
 
     static ChatCommand cheatCommandTable[] =
     {
+        { "fly",            SEC_GAMEMASTER,     false, &ChatHandler::HandleCheatFlyCommand,               "", nullptr },
         { "god",            SEC_GAMEMASTER,     false, &ChatHandler::HandleCheatGodCommand,               "", nullptr },
         { "cooldown",       SEC_GAMEMASTER,     false, &ChatHandler::HandleCheatCooldownCommand,          "", nullptr },
         { "casttime",       SEC_GAMEMASTER,     false, &ChatHandler::HandleCheatCastTimeCommand,          "", nullptr },
@@ -377,7 +378,7 @@ ChatCommand * ChatHandler::getCommandTable()
     static ChatCommand gmCommandTable[] =
     {
         { "chat",           SEC_MODERATOR,      false, &ChatHandler::HandleGMChatCommand,              "", nullptr },
-        { "fly",            SEC_GAMEMASTER,     false, &ChatHandler::HandleGMFlyCommand,               "", nullptr },
+        { "fly",            SEC_GAMEMASTER,     false, &ChatHandler::HandleCheatFlyCommand,            "", nullptr },
         { "ingame",         SEC_PLAYER,         true,  &ChatHandler::HandleGMListIngameCommand,        "", nullptr },
         { "list",           SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleGMListFullCommand,          "", nullptr },
         { "visible",        SEC_TICKETMASTER,   false, &ChatHandler::HandleGMVisibleCommand,           "", nullptr },
@@ -766,6 +767,8 @@ ChatCommand * ChatHandler::getCommandTable()
 
     static ChatCommand petCommandTable[] =
     {
+        { "learnspell",     SEC_DEVELOPER,      false, &ChatHandler::HandlePetLearnSpellCommand,        "", nullptr },
+        { "unlearnspell",   SEC_DEVELOPER,      false, &ChatHandler::HandlePetUnlearnSpellCommand,      "", nullptr },
         { "list",           SEC_GAMEMASTER,     true,  &ChatHandler::HandlePetListCommand,              "", nullptr },
         { "rename",         SEC_GAMEMASTER,     true,  &ChatHandler::HandlePetRenameCommand,            "", nullptr },
         { "delete",         SEC_GAMEMASTER,     true,  &ChatHandler::HandlePetDeleteCommand,            "", nullptr },
@@ -804,6 +807,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "creature_questrelation",       SEC_DEVELOPER,     true,  &ChatHandler::HandleReloadCreatureQuestRelationsCommand,  "", nullptr },
         { "creature_spells",              SEC_DEVELOPER,     true,  &ChatHandler::HandleReloadCreatureSpellsCommand,          "", nullptr },
         { "creature_spells_scripts",      SEC_DEVELOPER,     true,  &ChatHandler::HandleReloadCreatureSpellScriptsCommand,    "", nullptr },
+        { "creature_template",            SEC_DEVELOPER,     true,  &ChatHandler::HandleReloadCreatureTemplatesCommand,       "", nullptr },
         { "disenchant_loot_template",     SEC_DEVELOPER,     true,  &ChatHandler::HandleReloadLootTemplatesDisenchantCommand, "", nullptr },
         { "event_scripts",                SEC_DEVELOPER,     true,  &ChatHandler::HandleReloadEventScriptsCommand,            "", nullptr },
         { "fishing_loot_template",        SEC_DEVELOPER,     true,  &ChatHandler::HandleReloadLootTemplatesFishingCommand,    "", nullptr },
@@ -1209,6 +1213,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "escort",         SEC_TICKETMASTER,   false, nullptr,                                        "", escortCommandTable   },
         { "bg",             SEC_GAMEMASTER,     false, nullptr,                                        "", bgCommandTable       },
         { "spell",          SEC_GAMEMASTER,     true, nullptr,                                         "", spellCommandTable    },
+        { "pvp",            SEC_GAMEMASTER,     false, &ChatHandler::HandlePvPCommand,                 "", nullptr },
         { "variable",       SEC_DEVELOPER,      true,  &ChatHandler::HandleVariableCommand,            "", nullptr},
         { "aura",           SEC_BASIC_ADMIN,    false, &ChatHandler::HandleAuraCommand,                "", nullptr },
         { "nameaura",       SEC_BASIC_ADMIN,    false, &ChatHandler::HandleNameAuraCommand,            "", nullptr },
@@ -1404,7 +1409,7 @@ void ChatHandler::LoadRbacPermissions()
 
             if (m_rbacPermissionNames.find(permissionId) == m_rbacPermissionNames.end())
             {
-                sLog.Out(LOG_DBERROR, LOG_LVL_ERROR, "Unknown RBAC permission id %u assigned to command '%s'!", permissionId, command);
+                sLog.Out(LOG_DBERROR, LOG_LVL_ERROR, "Unknown RBAC permission id %u assigned to command '%s'!", permissionId, command.c_str());
                 continue;
             }
             
@@ -2053,8 +2058,15 @@ bool ChatHandler::ParseCommands(char const* text)
             {
                 if (session->GetGUID() == sessionGuid)
                 {
-                    ChatHandler handler(session);
-                    handler.ExecuteCommand(txt.c_str());
+                    if (session->GetPlayer() && session->GetPlayer()->IsInWorld())
+                    {
+                        ChatHandler handler(session);
+                        handler.ExecuteCommand(txt.c_str());
+                    }
+                    else
+                    {
+                        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Skipping command '%s' from account %u. Player is not in world.", txt.c_str(), accountId);
+                    }
                 }
             }
         });
@@ -3571,7 +3583,7 @@ bool ChatHandler::ExtractLocationFromLink(char** text, uint32& mapid, float& x, 
             if (!ExtractUInt32(&idS, id))
                 return false;
 
-            if (ObjectMgr::GetCreatureTemplate(id))
+            if (sObjectMgr.GetCreatureTemplate(id))
             {
                 FindCreatureData worker(id, m_session ? m_session->GetPlayer() : nullptr);
 

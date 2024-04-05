@@ -195,6 +195,7 @@ class ChatHandler
 
         //Cheats
         bool HandleCheatStatusCommand(char *);
+        bool HandleCheatFlyCommand(char* args);
         bool HandleCheatGodCommand(char *);
         bool HandleCheatCooldownCommand(char *);
         bool HandleCheatCastTimeCommand(char *);
@@ -393,6 +394,7 @@ class ChatHandler
         bool HandleSpellIconFixCommand(char *args);
         bool HandleUnitStatCommand(char *args);
         bool HandleDebugControlCommand(char *args);
+        bool HandlePvPCommand(char *args);
         // Reload
         bool HandleReloadCreatureTemplate(char* args);
         bool HandleReloadItemTemplate(char* args);
@@ -548,7 +550,6 @@ class ChatHandler
 
         bool HandleGMCommand(char* args);
         bool HandleGMChatCommand(char* args);
-        bool HandleGMFlyCommand(char* args);
         bool HandleGMListFullCommand(char* args);
         bool HandleGMListIngameCommand(char* args);
         bool HandleGMVisibleCommand(char* args);
@@ -782,6 +783,8 @@ class ChatHandler
         bool HandleQuestCompleteCommand(char* args);
         bool HandleQuestStatusCommand(char* args);
 
+        bool HandlePetLearnSpellCommand(char* args);
+        bool HandlePetUnlearnSpellCommand(char* args);
         bool HandlePetListCommand(char* args);
         bool HandlePetRenameCommand(char* args);
         bool HandlePetDeleteCommand(char* args);
@@ -811,6 +814,7 @@ class ChatHandler
         bool HandleReloadConditionsCommand(char* args);
         bool HandleReloadCreatureSpellsCommand(char* args);
         bool HandleReloadCreatureSpellScriptsCommand(char* args);
+        bool HandleReloadCreatureTemplatesCommand(char* args);
         bool HandleReloadCreatureQuestRelationsCommand(char* args);
         bool HandleReloadCreatureQuestInvRelationsCommand(char* args);
         bool HandleReloadGameGraveyardZoneCommand(char* args);
