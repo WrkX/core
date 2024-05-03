@@ -909,7 +909,7 @@ class Unit : public SpellCaster
         float m_meleeZLimit;
         float m_meleeZReach;
         ThreatManager m_ThreatManager; // Manage all Units threatening us
-        HostileRefManager m_HostileRefManager; // Manage all Units that are threatened by us
+        HostileRefManager m_HostileRefManager; // Manage all Units that are threatened by us (has list of creatures that have us in their threat list)
         std::vector<ObjectGuid> m_tauntGuids;
     protected:
         uint32 m_attackTimer[MAX_ATTACK];
@@ -1118,7 +1118,7 @@ class Unit : public SpellCaster
         uint8 GetEnemyCountInRadiusAround(Unit const* pTarget, float radius) const;
         void GetEnemyListInRadiusAround(Unit const* pTarget, float radius, std::list<Unit*>& targets) const;
         Unit* SelectNearestTarget(float dist) const;
-        Unit* SelectRandomUnfriendlyTarget(Unit const* except = nullptr, float radius = ATTACK_DISTANCE, bool inFront = false, bool isValidAttackTarget = false) const;
+        Unit* SelectRandomUnfriendlyTarget(Unit const* except = nullptr, float radius = ATTACK_DISTANCE, bool inFront = false, bool isValidAttackTarget = false, bool notPvpEnabling = false) const;
         Unit* SelectRandomFriendlyTarget(Unit const* except = nullptr, float radius = ATTACK_DISTANCE, bool inCombat = false) const;
         Unit* FindLowestHpFriendlyUnit(float fRange, uint32 uiMinHPDiff = 1, bool bPercent = false, Unit* except = nullptr) const;
         Unit* FindFriendlyUnitMissingBuff(float range, uint32 spellid, Unit const* except = nullptr) const;
@@ -1145,6 +1145,7 @@ class Unit : public SpellCaster
         uint32 GetCombatTimer() const { return m_combatTimer; }
         void SetCombatTimer(uint32 t) { m_combatTimer = t; }
         virtual void OnEnterCombat(Unit* /*pAttacker*/, bool /*notInCombat*/) {} // (pAttacker must be valid)
+        bool UsesPvPCombatTimer() const; // 5 second combat timer
 
         // Stop this unit from combat, if includingCast==true, also interrupt casting
         void CombatStop(bool includingCast = false);

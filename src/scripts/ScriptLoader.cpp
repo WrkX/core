@@ -155,7 +155,6 @@ void AddSC_boss_mandokir();
 void AddSC_boss_marli();
 void AddSC_boss_ouro();
 void AddSC_boss_renataki();
-void AddSC_boss_thekal();
 void AddSC_boss_venoxis();
 //void AddSC_boss_wushoolay();
 void AddSC_instance_zulgurub();
@@ -392,7 +391,6 @@ void AddScripts()
     AddSC_boss_marli();
     AddSC_boss_ouro();
     AddSC_boss_renataki();
-    AddSC_boss_thekal();
     AddSC_boss_venoxis();
     //AddSC_boss_wushoolay();
     AddSC_instance_zulgurub();

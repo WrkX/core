@@ -5747,6 +5747,26 @@ void Aura::HandleShapeshiftBoosts(bool apply)
                     }
                 }
             }
+
+            // World of Warcraft Client Patch 1.7.0 (2005-09-13)
+            // - Retaliation, Recklessness and Shield Wall will no longer be cancelled
+            //   if you switch stances while the effect is active.
+#if SUPPORTED_CLIENT_BUILD <= CLIENT_BUILD_1_6_1
+            if (target->GetClass() == CLASS_WARRIOR)
+            {
+                Unit::SpellAuraHolderMap& tAuras = target->GetSpellAuraHolderMap();
+                for (Unit::SpellAuraHolderMap::iterator itr = tAuras.begin(); itr != tAuras.end();)
+                {
+                    if (!itr->second->IsPassive() && itr->second->GetSpellProto()->GetErrorAtShapeshiftedCast(form) != SPELL_CAST_OK)
+                    {
+                        target->RemoveAurasDueToSpell(itr->second->GetId());
+                        itr = tAuras.begin();
+                    }
+                    else
+                        ++itr;
+                }
+            }
+#endif
         }
     }
     else
@@ -6422,11 +6442,14 @@ void Aura::PeriodicTick(SpellEntry const* sProto, AuraType auraType, uint32 data
 
             int32 gain = target->ModifyPower(power, pdamage);
 
+            // 1.9 - Mana regeneration over time will no longer generate threat.
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
-            if (power != POWER_MANA)     // 1.9 - Mana regeneration over time will no longer generate threat.
+            if (pCaster && power != POWER_MANA && power != POWER_HAPPINESS)
+#else
+            if (pCaster && power != POWER_HAPPINESS)
 #endif
-                if (pCaster)
-                    target->GetHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto);
+                target->GetHostileRefManager().threatAssist(pCaster, float(gain) * 0.5f * sSpellMgr.GetSpellThreatMultiplier(spellProto), spellProto);
+
             break;
         }
         case SPELL_AURA_OBS_MOD_MANA:

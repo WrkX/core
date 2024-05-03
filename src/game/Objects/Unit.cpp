@@ -212,7 +212,7 @@ void Unit::Update(uint32 update_diff, uint32 p_time)
 
     // Buffer spell system update time to save on performance when players are updated twice per
     // world update. We do not need to update spells when the interval is only a few ms (~10ms)
-    UpdateCooldowns(sWorld.GetCurrentClockTime());
+    UpdateCooldowns(GetMap()->GetCurrentClockTime());
     m_spellUpdateTimeBuffer += update_diff;
     if (m_spellUpdateTimeBuffer >= UNIT_SPELL_UPDATE_TIME_BUFFER)
     {
@@ -259,14 +259,19 @@ void Unit::Update(uint32 update_diff, uint32 p_time)
         m_combatTimer = UNIT_COMBAT_CHECK_TIMER_MAX - std::min(update_diff - m_combatTimer, UNIT_COMBAT_CHECK_TIMER_MAX);
 
         // update combat timer only for players and pets
-        if (IsInCombat() && (IsPlayer() || (IsPet() && GetOwnerGuid().IsPlayer()) || GetCharmerGuid().IsPlayer()))
+        if (IsInCombat() && UsesPvPCombatTimer() && !HasAuraType(SPELL_AURA_INTERRUPT_REGEN))
         {
             // Pet in combat ?
             Pet* myPet = GetPet();
             if (HasUnitState(UNIT_STAT_FEIGN_DEATH) || !myPet || myPet->GetHostileRefManager().isEmpty())
             {
-                if (m_HostileRefManager.isEmpty() && !HasAuraType(SPELL_AURA_INTERRUPT_REGEN))
-                    ClearInCombat();
+                if (m_HostileRefManager.isEmpty())
+                {
+                    if (!IsCharmerOrOwnerPlayerOrPlayerItself() && static_cast<Creature const*>(this)->HasExtraFlag(CREATURE_FLAG_EXTRA_NO_THREAT_LIST))
+                        OnLeaveCombat();
+                    else
+                        ClearInCombat();
+                }
             }
         }
     }
@@ -328,6 +333,23 @@ void Unit::Update(uint32 update_diff, uint32 p_time)
     m_lastDamageTaken += p_time;
     if (m_lastDamageTaken > 60000)
         m_damageTakenHistory.clear();
+}
+
+bool Unit::UsesPvPCombatTimer() const
+{
+    if (IsPlayer())
+        return true;
+
+    if (IsPet() && GetOwnerGuid().IsPlayer())
+        return true;
+
+    if (GetCharmerGuid().IsPlayer())
+        return true;
+
+    if (static_cast<Creature const*>(this)->HasExtraFlag(CREATURE_FLAG_EXTRA_NO_THREAT_LIST))
+        return true;
+
+    return false;
 }
 
 AutoAttackCheckResult Unit::CanAutoAttackTarget(Unit const* pVictim) const
@@ -5487,10 +5509,7 @@ int32 Unit::SpellBaseHealingBonusTaken(SpellSchoolMask schoolMask) const
 
 bool Unit::IsImmuneToDamage(SpellSchoolMask shoolMask, SpellEntry const* spellInfo) const
 {
-    if (spellInfo && 
-       (spellInfo->HasAttribute(SPELL_ATTR_NO_IMMUNITIES) ||
-        spellInfo->HasAttribute(SPELL_ATTR_EX_IGNORE_CASTER_AND_TARGET_RESTRICTIONS) ||
-        spellInfo->HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_AND_TARGET_RESTRICTIONS)))
+    if (spellInfo && (spellInfo->HasAttribute(SPELL_ATTR_NO_IMMUNITIES) || spellInfo->IsIgnoringCasterAndTargetRestrictions()))
         return false;
 
     // If m_immuneToDamage type contain magic, IMMUNE damage.
@@ -5527,9 +5546,7 @@ bool Unit::IsImmuneToDamage(SpellSchoolMask shoolMask, SpellEntry const* spellIn
 
 bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo, bool /*castOnSelf*/) const
 {
-    if (!spellInfo ||
-        spellInfo->HasAttribute(SPELL_ATTR_EX_IGNORE_CASTER_AND_TARGET_RESTRICTIONS) ||
-        spellInfo->HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_AND_TARGET_RESTRICTIONS))
+    if (!spellInfo || spellInfo->IsIgnoringCasterAndTargetRestrictions())
         return false;
 
     // Venomhide Ravasaur (6508) is immune to being poisoned by others, but has passive poison aura 14108.
@@ -5629,8 +5646,7 @@ bool Unit::IsImmuneToSpell(SpellEntry const* spellInfo, bool /*castOnSelf*/) con
 
 bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index, bool /*castOnSelf*/) const
 {
-    if (spellInfo->HasAttribute(SPELL_ATTR_EX_IGNORE_CASTER_AND_TARGET_RESTRICTIONS) ||
-        spellInfo->HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_AND_TARGET_RESTRICTIONS))
+    if (spellInfo->IsIgnoringCasterAndTargetRestrictions())
         return false;
 
     //If m_immuneToEffect type contain this effect type, IMMUNE effect.
@@ -5714,9 +5730,8 @@ bool Unit::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex i
 bool Unit::IsImmuneToSchool(SpellEntry const* spellInfo, uint8 effectMask) const
 {
     if (!spellInfo->HasAttribute(SPELL_ATTR_EX_IMMUNITY_PURGES_EFFECT)            // can remove immune (by dispell or immune it)
-     && !spellInfo->HasAttribute(SPELL_ATTR_EX_IGNORE_CASTER_AND_TARGET_RESTRICTIONS)
      && !spellInfo->HasAttribute(SPELL_ATTR_EX2_NO_SCHOOL_IMMUNITIES)
-     && !spellInfo->HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_AND_TARGET_RESTRICTIONS))
+     && !spellInfo->IsIgnoringCasterAndTargetRestrictions())
     {
         SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
         for (auto itr : schoolList)
@@ -5987,7 +6002,7 @@ void Unit::SetInCombatWith(Unit* pEnemy)
 {
     ASSERT(pEnemy);
 
-    SetInCombatState(pEnemy->IsCharmerOrOwnerPlayerOrPlayerItself() ? UNIT_PVP_COMBAT_TIMER : 0, pEnemy);
+    SetInCombatState(pEnemy->UsesPvPCombatTimer() ? UNIT_PVP_COMBAT_TIMER : 0, pEnemy);
 }
 
 void Unit::SetInCombatState(uint32 combatTimer, Unit* pEnemy)
@@ -6155,7 +6170,7 @@ void Unit::SetInCombatWithVictim(Unit* pVictim, bool touchOnly/* = false*/, uint
 
     if (!touchOnly)
     {
-        SetInCombatState(pVictim->IsCharmerOrOwnerPlayerOrPlayerItself() && (combatTimer < UNIT_PVP_COMBAT_TIMER) ? UNIT_PVP_COMBAT_TIMER : combatTimer, pVictim);
+        SetInCombatState(pVictim->UsesPvPCombatTimer() && (combatTimer < UNIT_PVP_COMBAT_TIMER) ? UNIT_PVP_COMBAT_TIMER : combatTimer, pVictim);
 
         // pet owner should not enter combat on spell missile launching
         if (!combatTimer)
@@ -7607,6 +7622,10 @@ bool Unit::SelectHostileTarget()
     if (!target && !m_ThreatManager.isThreatListEmpty())
         target = m_ThreatManager.getHostileTarget();
 
+    // stick to current target if no threat list
+    if (!target && ((Creature*)this)->HasExtraFlag(CREATURE_FLAG_EXTRA_NO_THREAT_LIST))
+        target = GetVictim();
+
     if (target)
     {
         // Nostalrius : Correction bug sheep/fear
@@ -7617,6 +7636,10 @@ bool Unit::SelectHostileTarget()
         }
         return true;
     }
+
+    // mobs that dont have threat list use 5 second combat timer like players
+    if (((Creature*)this)->HasExtraFlag(CREATURE_FLAG_EXTRA_NO_THREAT_LIST))
+        return false;
 
     // no target but something prevent go to evade mode // Nostalrius - fix evade quand CM.
     if (!IsInCombat() || HasAuraType(SPELL_AURA_MOD_TAUNT) || GetCharmerGuid())
@@ -9487,7 +9510,7 @@ void Unit::GetEnemyListInRadiusAround(Unit const* pTarget, float radius, std::li
     Cell::VisitAllObjects(pTarget, searcher, radius);
 }
 
-Unit* Unit::SelectRandomUnfriendlyTarget(Unit const* except /*= nullptr*/, float radius /*= ATTACK_DISTANCE*/, bool inFront /*= false*/, bool isValidAttackTarget /*= false*/) const
+Unit* Unit::SelectRandomUnfriendlyTarget(Unit const* except /*= nullptr*/, float radius /*= ATTACK_DISTANCE*/, bool inFront /*= false*/, bool isValidAttackTarget /*= false*/, bool notPvpEnabling /*= false*/) const
 {
     std::list<Unit*> targets;
 
@@ -9502,7 +9525,10 @@ Unit* Unit::SelectRandomUnfriendlyTarget(Unit const* except /*= nullptr*/, float
     // remove not LoS targets
     for (std::list<Unit*>::iterator tIter = targets.begin(); tIter != targets.end();)
     {
-        if ((!IsWithinLOSInMap(*tIter)) || (inFront && !this->HasInArc(*tIter, M_PI_F / 2)) || (isValidAttackTarget && !IsValidAttackTarget(*tIter)))
+        if ((!IsWithinLOSInMap(*tIter)) ||
+           (inFront && !this->HasInArc(*tIter, M_PI_F / 2)) ||
+           (isValidAttackTarget && !IsValidAttackTarget(*tIter)) ||
+           (notPvpEnabling && !CanAttackWithoutEnablingPvP(*tIter)))
         {
             std::list<Unit*>::iterator tIter2 = tIter;
             ++tIter;
@@ -9541,7 +9567,7 @@ Unit* Unit::SelectRandomFriendlyTarget(Unit const* except /*= nullptr*/, float r
     // remove not LoS targets
     for (std::list<Unit*>::iterator tIter = targets.begin(); tIter != targets.end();)
     {
-        if (!IsWithinLOSInMap(*tIter) || (inCombat && !(*tIter)->IsInCombat()))
+        if (!IsWithinLOSInMap(*tIter) || (inCombat && !(*tIter)->IsInCombat()) || (*tIter)->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
         {
             std::list<Unit*>::iterator tIter2 = tIter;
             ++tIter;
@@ -9577,7 +9603,7 @@ Unit* Unit::FindLowestHpFriendlyUnit(float fRange, uint32 uiMinHPDiff, bool bPer
         {
             if (Unit* pTarget = pReference->getSourceUnit())
             {
-                if (pTarget->IsAlive() && IsFriendlyTo(pTarget) && IsWithinDistInMap(pTarget, fRange) &&
+                if (pTarget->IsAlive() && IsFriendlyTo(pTarget) && IsWithinDistInMap(pTarget, fRange) && !pTarget->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) &&
                     ((bPercent && (100 - pTarget->GetHealthPercent() > uiMinHPDiff)) || (!bPercent && (pTarget->GetMaxHealth() - pTarget->GetHealth() > uiMinHPDiff))))
                 {
                     targets.push_back(pTarget);
@@ -10683,17 +10709,7 @@ void Unit::SetWalk(bool enable, bool asDefault)
     else
         m_movementInfo.RemoveMovementFlag(MOVEFLAG_WALK_MODE);
 
-#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_SET_WALK_MODE : SMSG_SPLINE_MOVE_SET_RUN_MODE, 9);
-#else
-    WorldPacket data(enable ? MSG_MOVE_SET_WALK_MODE : MSG_MOVE_SET_RUN_MODE, 9);
-#endif
-    data << GetPackGUID();
-
-    if (Player* me = ToPlayer())
-        me->GetSession()->SendPacket(&data);
-    else
-        SendObjectMessageToSet(&data, false);
+    MovementPacketSender::SendToggleRunWalkToAll(this, !enable);
 }
 
 void Unit::DisableSpline()

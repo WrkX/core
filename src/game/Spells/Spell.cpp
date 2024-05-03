@@ -4076,7 +4076,22 @@ void Spell::cast(bool skipCheck)
 
     // Remove any remaining invis auras on cast completion, should only be gnomish cloaking device
     if (!m_IsTriggeredSpell && m_casterUnit)
-        m_casterUnit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_ACTION_CANCELS_LATE, m_spellInfo->Id, false, !ShouldRemoveStealthAuras(), m_spellInfo->HasAttribute(SPELL_ATTR_EX2_ALLOW_WHILE_INVISIBLE));
+    {
+        uint32 interruptFlags = AURA_INTERRUPT_ACTION_CANCELS_LATE;
+
+        // World of Warcraft Client Patch 1.7.0 (2005-09-13)
+        // - Only spells and abilities that target enemy units will cancel the World Enlarger effect.
+        // This aura has auraInterruptFlags = 4096 implying this flag triggers on negative spell casts.
+        // Confirmed on classic that its removed at the end of the cast with Aimed Shot.
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_6_1
+        if (!Spells::IsPositiveTarget(m_spellInfo->EffectImplicitTargetA[0], m_spellInfo->EffectImplicitTargetB[0]))
+#else
+        if (Spells::IsExplicitlySelectedUnitTarget(m_spellInfo->EffectImplicitTargetA[0]) && m_casterUnit != m_targets.getUnitTarget())
+#endif
+            interruptFlags |= AURA_INTERRUPT_ATTACKING_CANCELS;
+
+        m_casterUnit->RemoveAurasWithInterruptFlags(interruptFlags, m_spellInfo->Id, false, !ShouldRemoveStealthAuras(), m_spellInfo->HasAttribute(SPELL_ATTR_EX2_ALLOW_WHILE_INVISIBLE));
+    }
 
     TakePower();
     TakeReagents();                                         // we must remove reagents before HandleEffects to allow place crafted item in same slot
@@ -5800,8 +5815,7 @@ void Spell::RemoveChanneledAuraHolder(SpellAuraHolder* holder, AuraRemoveMode mo
 
 SpellCastResult Spell::CheckCast(bool strict)
 {
-    if (m_spellInfo->HasAttribute(SPELL_ATTR_EX_IGNORE_CASTER_AND_TARGET_RESTRICTIONS) ||
-        m_spellInfo->HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_AND_TARGET_RESTRICTIONS))
+    if (m_spellInfo->IsIgnoringCasterAndTargetRestrictions())
         return SPELL_CAST_OK;
 
     if (m_caster->IsPlayer() && m_caster->ToPlayer()->HasCheatOption(PLAYER_CHEAT_NO_CHECK_CAST))
